@@ -1,0 +1,106 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/coach/presentation/coach_screen.dart';
+import '../../features/dashboard/presentation/home_screen.dart';
+import '../../features/nutrition/presentation/nutrition_screen.dart';
+import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/profile/application/profile_providers.dart';
+import '../../features/profile/domain/user_profile.dart';
+import '../../features/progress/presentation/progress_screen.dart';
+import '../../features/workouts/presentation/workout_screen.dart';
+import '../../app/home_shell.dart';
+
+abstract final class AppRoutes {
+  static const String onboarding = '/onboarding';
+  static const String home = '/home';
+  static const String workout = '/workout';
+  static const String nutrition = '/nutrition';
+  static const String progress = '/progress';
+  static const String coach = '/coach';
+}
+
+/// Notifies GoRouter when the profile appears, without rebuilding the router
+/// (which would discard the navigation stack and shell state).
+class _RouterRefresh extends ChangeNotifier {
+  void refresh() => notifyListeners();
+}
+
+final appRouterProvider = Provider<GoRouter>((ref) {
+  final refresh = _RouterRefresh();
+  ref.onDispose(refresh.dispose);
+  ref.listen<UserProfile?>(
+    profileControllerProvider,
+    (previous, next) => refresh.refresh(),
+  );
+
+  final router = GoRouter(
+    initialLocation: ref.read(profileControllerProvider) == null
+        ? AppRoutes.onboarding
+        : AppRoutes.home,
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      final hasProfile = ref.read(profileControllerProvider) != null;
+      final onOnboarding = state.matchedLocation == AppRoutes.onboarding;
+      if (!hasProfile && !onOnboarding) return AppRoutes.onboarding;
+      if (hasProfile && onOnboarding) return AppRoutes.home;
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: AppRoutes.onboarding,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            HomeShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.workout,
+                builder: (context, state) => const WorkoutScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.nutrition,
+                builder: (context, state) => const NutritionScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.progress,
+                builder: (context, state) => const ProgressScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.coach,
+                builder: (context, state) => const CoachScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+
+  ref.onDispose(router.dispose);
+  return router;
+});

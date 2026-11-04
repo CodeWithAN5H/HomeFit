@@ -1,7 +1,8 @@
 # HomeFit — Architecture
 
-Status: **design agreed in M0; no source code exists yet.** Every statement below describes the intended
-structure that the first code commits will follow. It will be revised as implementation reveals reality.
+Status: **core implemented in M1–M2.** The layering, feature module layout, theme, routing, dependency
+injection and Drift profile store exist as described. The training, nutrition, consistency and progress
+engines are still design and will be added behind the same boundaries.
 
 ---
 
