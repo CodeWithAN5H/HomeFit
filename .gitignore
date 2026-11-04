@@ -1,0 +1,53 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.metadata
+
+# Drift generated files are committed on purpose (see DATABASE_SCHEMA.md)
+# so that a fresh checkout builds without build_runner.
+
+# Android
+android/.gradle/
+android/captures/
+android/local.properties
+android/key.properties
+android/app/release/
+android/app/debug/
+android/app/profile/
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Desktop
+windows/flutter/ephemeral/
+linux/flutter/ephemeral/
+macos/Flutter/ephemeral/
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+.DS_Store
+Thumbs.db
+
+# Tooling / agent workspace
+.freebuff/
+
+# Local secrets and env files
+.env
+.env.*
+*.keystore.password
+
+# Build artifacts that must never be committed as normal releases
+*.apk
+*.aab
+*.exe
+*.AppImage
