@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/routing/app_routes.dart';
 import '../../../core/services/clock.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/utilities/day_phrase.dart';
@@ -32,6 +34,12 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('HomeFit'),
         actions: [
+          IconButton(
+            key: const Key('edit_profile_action'),
+            onPressed: () => context.push(AppRoutes.profileEdit),
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit profile',
+          ),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.xl),
             child: Center(
@@ -110,8 +118,18 @@ class _ProfileCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Your setup', style: theme.textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: Text('Your setup', style: theme.textTheme.titleMedium),
+              ),
+              TextButton(
+                onPressed: () => context.push(AppRoutes.profileEdit),
+                child: const Text('Edit'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
           DetailRow(label: 'Age', value: '${profile.age} years'),
           DetailRow(label: 'Height', value: '${profile.heightCm} cm'),
           DetailRow(

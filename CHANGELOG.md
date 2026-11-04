@@ -41,6 +41,26 @@ nutrition are still absent and every affected tab says so.
 
 - The Flutter counter demo (`lib/main.dart`) and its smoke test.
 
+### Added in M2.2 — profile editing
+
+- **Edit profile** screen at `/profile/edit`, reachable from the Home app bar and an `Edit` button on the
+  *Your setup* card. Every field is prepopulated: age, height, weight, experience, goals, focus areas,
+  equipment, session length, training time, diet restrictions, sleep and reminders.
+- Saving validates with the onboarding rules, updates the existing profile row in place (no duplicates,
+  original `created_at` preserved) and returns Home with a confirmation snackbar; cancelling writes nothing.
+- `OnboardingDraft.fromProfile` and `OnboardingDraft.validateProfile` so setup and editing share one set of
+  rules and messages.
+- Shared `AppNumberField`, used by both onboarding and the editor.
+- Tests: editor prepopulation, save, cancel, invalid input, stale-error clearing, empty goals, a router-level
+  navigation test and a temporary-file database round trip (47 tests total).
+
+### Fixed in M2.2
+
+- Validation messages now clear as soon as the user edits a field instead of lingering from the previous
+  attempt, in onboarding and in the editor.
+- Saving from the editor no longer leaves the editor open: the router refreshes only when profile presence
+  changes, so the pop after saving is no longer undone by a re-push.
+
 ### Fixed after physical-device validation
 
 - Long chip labels (sleep options) overflowed their card on a 393 dp-wide phone; the label now wraps inside

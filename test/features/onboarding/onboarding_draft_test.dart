@@ -4,6 +4,8 @@ import 'package:homefit/features/profile/domain/fitness_assessment.dart';
 import 'package:homefit/features/profile/domain/profile_options.dart';
 import 'package:homefit/features/profile/domain/user_profile.dart';
 
+import '../../fixtures/profile_fixtures.dart';
+
 void main() {
   final DateTime now = DateTime.utc(2026, 5, 1);
 
@@ -133,6 +135,81 @@ void main() {
       expect(assessment.plankSeconds, 45);
       expect(assessment.kneePushUps, isNull);
       expect(assessment.recordedAt, now);
+    });
+  });
+
+  group('profile editing', () {
+    test('a draft seeded from a saved profile mirrors every field', () {
+      final UserProfile profile = buildTestProfile(age: 41);
+      final draft = OnboardingDraft.fromProfile(profile);
+
+      expect(draft.age, 41);
+      expect(draft.heightCm, profile.heightCm);
+      expect(draft.weightKg, profile.weightKg);
+      expect(draft.experience, profile.experience);
+      expect(draft.goals, profile.goals);
+      expect(draft.priorities, profile.priorities);
+      expect(draft.equipment, profile.equipment);
+      expect(draft.sessionMinutes, profile.sessionMinutes);
+      expect(draft.trainingTime, profile.trainingTime);
+      expect(draft.restrictions, profile.restrictions);
+      expect(draft.sleep, profile.sleep);
+      expect(draft.notificationsEnabled, profile.notificationsEnabled);
+      expect(draft.validateProfile(), isNull);
+    });
+
+    test('seeded state is a copy, so cancelling cannot mutate the profile', () {
+      final UserProfile profile = buildTestProfile();
+      final draft = OnboardingDraft.fromProfile(profile)
+        ..age = 55
+        ..sleep = null;
+      draft.goals.clear();
+
+      expect(profile.age, 30);
+      expect(profile.sleep, SleepPattern.irregular);
+      expect(profile.goals, isNotEmpty);
+    });
+
+    test('the editor enforces the same rules as onboarding', () {
+      expect(
+        (OnboardingDraft.fromProfile(
+          buildTestProfile(),
+        )..age = 12).validateProfile(),
+        contains('13'),
+      );
+      expect(
+        (OnboardingDraft.fromProfile(
+          buildTestProfile(),
+        )..sleep = null).validateProfile(),
+        contains('sleep'),
+      );
+      expect(
+        (OnboardingDraft.fromProfile(
+          buildTestProfile(),
+        )..goals.clear()).validateProfile(),
+        contains('goal'),
+      );
+    });
+
+    test('an unset sleep choice cannot produce a profile', () {
+      final draft = OnboardingDraft.fromProfile(buildTestProfile())
+        ..sleep = null;
+
+      expect(draft.validateProfile(), isNotNull);
+      expect(() => draft.buildProfile(now: now), throwsA(anything));
+    });
+
+    test('editing keeps the creation time and moves the modified time', () {
+      final UserProfile profile = buildTestProfile();
+      final UserProfile updated =
+          (OnboardingDraft.fromProfile(profile)..age = 33).buildProfile(
+            now: DateTime.utc(2026, 6, 1),
+            createdAt: profile.createdAt,
+          );
+
+      expect(updated.age, 33);
+      expect(updated.createdAt, profile.createdAt);
+      expect(updated.updatedAt, DateTime.utc(2026, 6, 1));
     });
   });
 }

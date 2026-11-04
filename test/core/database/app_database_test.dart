@@ -1,9 +1,14 @@
+import 'dart:io';
+
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homefit/core/database/app_database.dart';
+import 'package:homefit/features/onboarding/domain/onboarding_draft.dart';
 import 'package:homefit/features/profile/data/profile_repository.dart';
 import 'package:homefit/features/profile/domain/fitness_assessment.dart';
 import 'package:homefit/features/profile/domain/profile_options.dart';
 import 'package:homefit/features/profile/domain/user_profile.dart';
+import 'package:path/path.dart' as p;
 
 import '../../fixtures/profile_fixtures.dart';
 
@@ -91,6 +96,69 @@ void main() {
       throwsA(anything),
     );
   });
+
+  test(
+    'editing an existing profile keeps one row and its creation time',
+    () async {
+      final UserProfile original = buildTestProfile();
+      await repository.saveProfile(original);
+
+      final UserProfile edit =
+          (OnboardingDraft.fromProfile(original)
+                ..age = 34
+                ..weightKg = 71.5
+                ..sleep = SleepPattern.regular)
+              .buildProfile(
+                now: DateTime.utc(2026, 8, 1),
+                createdAt: original.createdAt,
+              );
+      await repository.saveProfile(edit);
+
+      final rows = await database.select(database.profileRows).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.age, 34);
+      expect(rows.single.weightKg, 71.5);
+
+      final UserProfile? reloaded = await repository.readProfile();
+      expect(reloaded!.createdAt, original.createdAt);
+      expect(reloaded.updatedAt, DateTime.utc(2026, 8, 1));
+      expect(reloaded.sleep, SleepPattern.regular);
+    },
+  );
+
+  test(
+    'a fresh file database keeps an explicit sleep choice after reopen',
+    () async {
+      final Directory directory = await Directory.systemTemp.createTemp(
+        'homefit_db_test',
+      );
+      addTearDown(() async {
+        if (directory.existsSync()) await directory.delete(recursive: true);
+      });
+      final File file = File(p.join(directory.path, 'homefit.sqlite'));
+
+      final AppDatabase first = AppDatabase(NativeDatabase(file));
+      final UserProfile draftProfile =
+          (OnboardingDraft.fromProfile(
+            buildTestProfile(),
+          )..sleep = SleepPattern.regular).buildProfile(
+            now: DateTime.utc(2026, 9, 1),
+            createdAt: DateTime.utc(2026, 2, 2),
+          );
+      await DriftProfileRepository(first).saveProfile(draftProfile);
+      await first.close();
+
+      final AppDatabase second = AppDatabase(NativeDatabase(file));
+      addTearDown(second.close);
+      final UserProfile? loaded = await DriftProfileRepository(second)
+          .readProfile();
+
+      expect(loaded, isNotNull);
+      expect(loaded!.sleep, SleepPattern.regular);
+      expect(loaded.createdAt, DateTime.utc(2026, 2, 2));
+      expect(loaded.age, draftProfile.age);
+    },
+  );
 
   test('stored enum names survive a reload', () async {
     await repository.saveProfile(

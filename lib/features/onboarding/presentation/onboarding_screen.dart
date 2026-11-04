@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/clock.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/number_field.dart';
 import '../../../shared/widgets/selectable_chip.dart';
 import '../../profile/application/profile_providers.dart';
 import '../../profile/domain/profile_options.dart';
@@ -64,6 +64,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ..kneePushUps = int.tryParse(_kneePushUpsField.text.trim())
       ..plankSeconds = int.tryParse(_plankField.text.trim())
       ..pullUps = int.tryParse(_pullUpsField.text.trim());
+  }
+
+  /// Clears a stale validation message as soon as the user edits anything.
+  void _edited() {
+    if (_error == null) return;
+    setState(() => _error = null);
+  }
+
+  /// Applies a draft change and clears the message in a single rebuild.
+  void _update(VoidCallback change) {
+    setState(() {
+      change();
+      _error = null;
+    });
   }
 
   Future<void> _handleContinue() async {
@@ -249,26 +263,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     String? hint,
     bool allowDecimal = false,
   }) {
-    return TextField(
-      key: fieldKey,
+    return AppNumberField(
+      fieldKey: fieldKey,
       controller: controller,
-      keyboardType: TextInputType.numberWithOptions(decimal: allowDecimal),
-      textInputAction: TextInputAction.next,
-      inputFormatters: allowDecimal
-          ? <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(
-                RegExp(r'^\d{0,3}(\.\d{0,1})?'),
-              ),
-            ]
-          : <TextInputFormatter>[
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(3),
-            ],
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        suffixText: suffix,
-      ),
+      label: label,
+      suffix: suffix,
+      hint: hint,
+      allowDecimal: allowDecimal,
+      onChanged: (_) => _edited(),
     );
   }
 
@@ -312,7 +314,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: SelectableChip(
               label: level.label,
               selected: _draft.experience == level,
-              onTap: () => setState(() => _draft.experience = level),
+              onTap: () => _update(() => _draft.experience = level),
             ),
           ),
         const SizedBox(height: AppSpacing.xs),
@@ -341,7 +343,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               SelectableChip(
                 label: goal.label,
                 selected: _draft.goals.contains(goal),
-                onTap: () => setState(() {
+                onTap: () => _update(() {
                   if (!_draft.goals.remove(goal)) _draft.goals.add(goal);
                 }),
               ),
@@ -366,7 +368,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               SelectableChip(
                 label: priority.label,
                 selected: _draft.priorities.contains(priority),
-                onTap: () => setState(() {
+                onTap: () => _update(() {
                   if (!_draft.priorities.remove(priority)) {
                     _draft.priorities.add(priority);
                   }
@@ -379,7 +381,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _toggleEquipment(EquipmentItem item) {
-    setState(() {
+    _update(() {
       if (item == EquipmentItem.bodyweight) {
         _draft.equipment
           ..clear()
@@ -433,7 +435,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           divisions: 8,
           label: '${_draft.sessionMinutes} min',
           onChanged: (value) =>
-              setState(() => _draft.sessionMinutes = value.round()),
+              _update(() => _draft.sessionMinutes = value.round()),
         ),
         const SizedBox(height: AppSpacing.lg),
         Text('When do you usually train?', style: theme.textTheme.titleMedium),
@@ -446,7 +448,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               SelectableChip(
                 label: time.label,
                 selected: _draft.trainingTime == time,
-                onTap: () => setState(() => _draft.trainingTime = time),
+                onTap: () => _update(() => _draft.trainingTime = time),
               ),
           ],
         ),
@@ -490,7 +492,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               SelectableChip(
                 label: restriction.label,
                 selected: _draft.restrictions.contains(restriction),
-                onTap: () => setState(() {
+                onTap: () => _update(() {
                   if (!_draft.restrictions.remove(restriction)) {
                     _draft.restrictions.add(restriction);
                   }
@@ -507,7 +509,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: SelectableChip(
               label: '${pattern.label} — ${pattern.description}',
               selected: _draft.sleep == pattern,
-              onTap: () => setState(() => _draft.sleep = pattern),
+              onTap: () => _update(() => _draft.sleep = pattern),
             ),
           ),
         const SizedBox(height: AppSpacing.lg),
@@ -516,7 +518,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             contentPadding: EdgeInsets.zero,
             value: _draft.notificationsEnabled,
             onChanged: (value) =>
-                setState(() => _draft.notificationsEnabled = value),
+                _update(() => _draft.notificationsEnabled = value),
             title: Text('Reminders', style: theme.textTheme.titleMedium),
             subtitle: Text(
               'Meal and workout reminders. Android will ask for permission '

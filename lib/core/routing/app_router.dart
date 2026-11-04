@@ -8,18 +8,11 @@ import '../../features/nutrition/presentation/nutrition_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/profile/application/profile_providers.dart';
 import '../../features/profile/domain/user_profile.dart';
+import '../../features/profile/presentation/profile_edit_screen.dart';
 import '../../features/progress/presentation/progress_screen.dart';
 import '../../features/workouts/presentation/workout_screen.dart';
 import '../../app/home_shell.dart';
-
-abstract final class AppRoutes {
-  static const String onboarding = '/onboarding';
-  static const String home = '/home';
-  static const String workout = '/workout';
-  static const String nutrition = '/nutrition';
-  static const String progress = '/progress';
-  static const String coach = '/coach';
-}
+import 'app_routes.dart';
 
 /// Notifies GoRouter when the profile appears, without rebuilding the router
 /// (which would discard the navigation stack and shell state).
@@ -30,10 +23,12 @@ class _RouterRefresh extends ChangeNotifier {
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefresh();
   ref.onDispose(refresh.dispose);
-  ref.listen<UserProfile?>(
-    profileControllerProvider,
-    (previous, next) => refresh.refresh(),
-  );
+  // Only the presence of a profile changes routing (onboarding <-> app).
+  // Refreshing on every save would rebuild the route stack while the editor
+  // is popping, which pushed the closed editor back onto the stack.
+  ref.listen<UserProfile?>(profileControllerProvider, (previous, next) {
+    if ((previous == null) != (next == null)) refresh.refresh();
+  });
 
   final router = GoRouter(
     initialLocation: ref.read(profileControllerProvider) == null
@@ -51,6 +46,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profileEdit,
+        builder: (context, state) => const ProfileEditScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

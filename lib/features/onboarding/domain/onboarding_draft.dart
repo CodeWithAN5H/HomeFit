@@ -7,6 +7,27 @@ import '../../profile/domain/user_profile.dart';
 /// All rules live here (pure Dart) so they can be unit tested without widgets,
 /// and so the widgets stay declarative.
 class OnboardingDraft {
+  OnboardingDraft();
+
+  /// Seeds the editor from the saved profile so every field starts at the
+  /// value the user last chose.
+  factory OnboardingDraft.fromProfile(UserProfile profile) {
+    final draft = OnboardingDraft()
+      ..age = profile.age
+      ..heightCm = profile.heightCm
+      ..weightKg = profile.weightKg
+      ..experience = profile.experience
+      ..sessionMinutes = profile.sessionMinutes
+      ..trainingTime = profile.trainingTime
+      ..sleep = profile.sleep
+      ..notificationsEnabled = profile.notificationsEnabled;
+    draft.goals.addAll(profile.goals);
+    draft.priorities.addAll(profile.priorities);
+    draft.equipment.addAll(profile.equipment);
+    draft.restrictions.addAll(profile.restrictions);
+    return draft;
+  }
+
   static const int stepCount = 5;
 
   int? age;
@@ -81,7 +102,20 @@ class OnboardingDraft {
     }
   }
 
-  UserProfile buildProfile({required DateTime now}) {
+  /// Every rule that applies to a finished profile, in step order.
+  ///
+  /// The editor shows one page, so it validates all steps at once and reuses
+  /// exactly the messages onboarding shows.
+  String? validateProfile() {
+    for (int step = 0; step < stepCount - 1; step++) {
+      final String? error = errorForStep(step);
+      if (error != null) return error;
+    }
+    return null;
+  }
+
+  /// [createdAt] is passed when editing so the original creation time survives.
+  UserProfile buildProfile({required DateTime now, DateTime? createdAt}) {
     return UserProfile(
       age: age!,
       heightCm: heightCm!,
@@ -96,7 +130,7 @@ class OnboardingDraft {
       restrictions: Set<DietRestriction>.unmodifiable(restrictions),
       sleep: sleep!,
       notificationsEnabled: notificationsEnabled,
-      createdAt: now,
+      createdAt: createdAt ?? now,
       updatedAt: now,
     );
   }

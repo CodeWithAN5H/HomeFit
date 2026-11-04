@@ -14,7 +14,7 @@ HomeFit is being built for **Android first**, with Windows and Linux planned. Al
 
 ## Current status
 
-**M0 complete · M1 implemented and tested · M2 implemented and tested.**
+**M0 complete · M1 implemented and tested · M2 implemented and verified · M2.2 profile editing done.**
 Workout, nutrition, progress, coaching and notifications are **not implemented yet**.
 
 What actually works in this build:
@@ -22,13 +22,16 @@ What actually works in this build:
 - A five-step onboarding flow (age, height, weight, experience, goals, focus areas, equipment, session
   length, training time, diet, sleep, optional baseline) with validated input.
 - The profile and optional baseline assessment are saved to a local SQLite database and survive restarts.
+- **Profile editing**: every answer can be changed later from Home → *Edit* (or the app-bar pencil), with the
+  same validation as onboarding, cancel-without-saving, and an in-place update of the single stored row.
 - A dark Material 3 design system, five-destination navigation (Home, Workout, Nutrition, Progress, Coach),
   and a home screen that summarises the saved profile and gives sleep-aware recovery guidance.
 - An honest "not built yet" state on every tab whose features are still missing — no dead controls.
 
-Verified: `flutter analyze` → no issues; `flutter test` → 33 tests pass; the debug APK was installed and
-exercised on a physical iQOO Z3 (Android 13) through onboarding, all five tabs, restart and SQLite
-read-back. Full detail, including limitations, is in [PROJECT_STATUS.md](PROJECT_STATUS.md).
+Verified: `flutter analyze` → no issues; `flutter test` → 47 tests pass; the debug APK was installed and
+exercised on a physical iQOO Z3 (Android 13) through onboarding, profile editing (save, cancel, invalid
+input, restart), all five tabs, Back behaviour and SQLite read-back. Full detail, including limitations, is
+in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Documentation
 
@@ -63,12 +66,12 @@ lib/
     utilities/          # enum codec, greeting helper
   features/
     onboarding/         # draft validation (pure) + five-step UI
-    profile/            # domain models, repository, mappers, providers
+    profile/            # domain models, repository, mappers, providers, edit screen
     dashboard/          # home screen
     workouts/ nutrition/ progress/ coach/   # honest not-built-yet states
-  shared/widgets/       # card, chips, detail rows, milestone notice
+  shared/widgets/       # card, chips, number field, detail rows, milestone notice
 test/
-  core/  features/  widget/  fixtures/      # unit, database, controller and widget tests
+  app/  core/  features/  widget/  fixtures/   # routing, unit, database, controller and widget tests
 ```
 
 ## Developer setup

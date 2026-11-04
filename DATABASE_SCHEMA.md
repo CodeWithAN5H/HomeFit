@@ -2,7 +2,8 @@
 
 Status: **schema v1 implemented (M2).** `profile_rows` and `assessment_rows` exist in
 `lib/core/database/app_tables.dart` with Drift `schemaVersion = 1`, foreign keys enabled on every open,
-and timestamps normalised to UTC by the mappers. Everything else in this document is the agreed target for
+and timestamps normalised to UTC by the mappers. Profile edits update the existing `primary` row in place
+(`insertOnConflictUpdate`), so editing never creates a duplicate row and `created_at` survives. Everything else in this document is the agreed target for
 the milestone that owns it and is **not implemented yet**. Any schema change must bump `schemaVersion`,
 ship a migration, and update this file in the same commit.
 
