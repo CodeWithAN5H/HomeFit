@@ -1,0 +1,35 @@
+name: homefit
+description: "Offline-first personal home fitness coach: adaptive home training, vegetarian nutrition and long-term consistency. No account, no backend, no paid AI."
+publish_to: 'none'
+
+# Development builds use 0.x. See DEVELOPMENT_ROADMAP.md for release gates.
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management + dependency injection
+  flutter_riverpod: ^3.4.3
+  # Declarative navigation
+  go_router: ^18.1.2
+  # Local SQLite persistence with migrations
+  drift: ^2.35.3
+  sqlite3_flutter_libs: ^0.6.0+eol
+  path_provider: ^2.1.6
+  path: ^1.9.1
+  # Date formatting
+  intl: ^0.20.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.35.2
+  build_runner: ^2.17.1
+
+flutter:
+  uses-material-design: true

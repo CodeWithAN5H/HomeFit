@@ -7,7 +7,7 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 *.iml
-.metadata
+# .metadata is committed on purpose: it pins the Flutter SDK version used for migrations.
 
 # Drift generated files are committed on purpose (see DATABASE_SCHEMA.md)
 # so that a fresh checkout builds without build_runner.
