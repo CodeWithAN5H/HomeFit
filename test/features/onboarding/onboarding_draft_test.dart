@@ -65,6 +65,14 @@ void main() {
       expect(draft.errorForStep(2), isNull);
     });
 
+    test('sleep must be chosen explicitly', () {
+      final draft = OnboardingDraft();
+      expect(draft.errorForStep(3), contains('sleep'));
+
+      draft.sleep = SleepPattern.regular;
+      expect(draft.errorForStep(3), isNull);
+    });
+
     test('negative baseline values are rejected', () {
       final draft = OnboardingDraft()..pushUps = -1;
       expect(draft.errorForStep(4), contains('negative'));

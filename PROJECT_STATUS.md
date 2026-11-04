@@ -26,7 +26,7 @@ deleted (per instruction) and are not used by the project.
 | --- | --- | --- |
 | M0 | Audit, docs, Git, toolchain | **Verified** — audit documented, repo on `main`, baseline commit `924e64b`, debug APK proven |
 | M1 | Design system, navigation, onboarding, profile | **Tested** — theme, shell, 5-step onboarding with validation, profile persistence; 29 tests pass, analyzer clean |
-| M2 | Database foundation | **Tested** — Drift schema v1 (profile + assessment), repository, mappers, FK enforcement, UTC timestamps |
+| M2 | Database foundation | **Verified** — Drift schema v1 (profile + assessment), repository, mappers, FK enforcement, UTC timestamps; installed and exercised on a physical device |
 | M3 | Exercise library | Not started |
 | M4 | Workout engine | Not started |
 | M5 | Nutrition engine | Not started |
@@ -35,6 +35,28 @@ deleted (per instruction) and are not used by the project.
 | M8 | AI Plan Studio | Not started |
 | M9 | Backup, accessibility, performance polish | Not started |
 | M10 | Android release | Not started |
+
+## M2.1 — physical device validation (2026-11-04)
+
+| Check | Result |
+| --- | --- |
+| Device | vivo **iQOO Z3** (`I2011`, device `2011`), **Android 13 / API 33**, `arm64-v8a`, 1080×2408 @ 440 dpi, adb serial `1375659727000XY`, state `device` |
+| Install | `adb install -r` → **Success** (164 MB debug APK, `versionName 0.1.0`, `com.homefit.app`); first cold launch 7.5 s |
+| Onboarding | All five steps completed on the phone: validation, goals/focus chips, equipment exclusivity, session slider (55 min), training time, restrictions toggle, sleep selection, reminder switch, blank optional baseline |
+| Validation | `Continue` with empty fields → **“Enter your age.”** and the step is held; error clears after a successful press |
+| Keyboard | Numeric keypad opens for number fields, the focused field stays visible, layout shrinks cleanly above the IME, and system Back closes the keyboard without leaving the app |
+| Persistence | Profile written to the on-device SQLite file (`files/homefit.sqlite`, `user_version 1`, `integrity_check ok`, one `profile_rows` row, zero `assessment_rows`); force-stop + relaunch opened **Home** directly with identical values |
+| Navigation | All five destinations open; each unfinished tab shows its explicit milestone notice |
+| Back behaviour | Back from any secondary tab returns to **Home**; Back on Home exits to the launcher (fixed during this pass) |
+| Logs | No crashes, no Flutter exceptions, no SQLite/Drift errors; only benign `hiddenapi ... denied` lines from Flutter's predictive-back access on API 33 |
+
+### Defects found on hardware, and what was done
+
+1. **Sleep option chips overflowed horizontally** (visible yellow/black overflow stripes, text clipped mid-word) at 393 dp width. **Fixed:** `SelectableChip` now lays its label out in a `Flexible` that soft-wraps; regression tests cover a long label at 320 dp and chips inside a `Wrap`. Re-verified on the phone.
+2. **Android Back closed the app from every tab.** **Fixed:** `HomeShell` wraps the shell in `PopScope` — Back on a secondary tab returns to Home, Back on Home still exits. Re-verified on the phone.
+3. **Sleep defaulted to “Irregular”**, so Home reported *“You reported irregular sleep”* for a choice the user never made. **Fixed:** the draft starts with no sleep pattern and step 4 requires an explicit choice; covered by unit tests. Not re-verified on hardware, because onboarding is no longer reachable on this install without wiping the saved profile.
+
+**Known nit (not fixed):** after a failed validation the message stays visible while the user types, and only clears on the next `Continue` press.
 
 ## What M1 actually delivers
 
@@ -74,8 +96,9 @@ deleted (per instruction) and are not used by the project.
 | `flutter analyze` (strict-casts/inference/raw-types, generated files excluded) | **No issues found** |
 | `flutter test` | **29 tests passed** — draft validation, mappers (round-trip, unknown enums, corrupt JSON), controller with fake repository, in-memory SQLite (persistence, single-row upsert, assessment ordering, empty assessment, FK rejection, enum reload), greeting boundaries, onboarding widget flow |
 | `dart run build_runner build` | Drift codegen succeeded (1 generated library) |
-| `flutter build apk --debug` | Succeeded — build artifact only, not installed on the device |
-| `adb devices` | Device online |
+| `flutter build apk --debug` | Succeeded (14–45 s incremental) |
+| `adb install -r` on iQOO Z3 | Success; app launched, onboarded, navigated, restarted and re-read from SQLite |
+| `flutter test` after the device fixes | **33 tests passed** |
 
 ## Known limitations (honest list)
 
@@ -87,10 +110,10 @@ deleted (per instruction) and are not used by the project.
    exists yet.
 4. **No migration test yet.** Schema v1 is the first version, so there is nothing to migrate from; the
    migration harness arrives with schema v1→v2.
-5. **No device install test.** The APK builds and the phone is connected, but the build was not installed,
-   so launch behaviour on hardware is unproven.
-6. **Visual check limited to widget tests.** No screenshots were taken, and Android-level rendering was not
-   inspected.
+5. **Device coverage is a single phone.** Validation ran on one iQOO Z3 (Android 13, 440 dpi). Other
+   densities, Android 14/15 behaviour and tablets are untested.
+6. **Only the debug APK was exercised.** Release shrinking, AAB packaging and release signing remain
+   unverified (M10).
 7. **Accessibility is partial.** Touch targets and semantics are implemented for chips and fields, but a
    full screen-reader and 2.0× text-scale pass has not been done (M9).
 8. **Signing is debug-only.** Release APK signing is deliberately a placeholder until M10.

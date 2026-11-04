@@ -41,11 +41,21 @@ nutrition are still absent and every affected tab says so.
 
 - The Flutter counter demo (`lib/main.dart`) and its smoke test.
 
+### Fixed after physical-device validation
+
+- Long chip labels (sleep options) overflowed their card on a 393 dp-wide phone; the label now wraps inside
+  a flexible box, with regression tests for narrow widths and `Wrap` layouts.
+- Android Back closed HomeFit from every tab; it now returns to Home from a secondary tab and only exits
+  from Home itself.
+- Sleep no longer defaults to “Irregular”: onboarding requires an explicit sleep choice, so Home can never
+  report a pattern the user did not select.
+
 ### Verification
 
 - `flutter analyze`: no issues.
-- `flutter test`: 29 passed.
-- `flutter build apk --debug`: succeeded (development build, debug-signed, not distributed, not installed).
+- `flutter test`: 33 passed (after the device fixes).
+- `flutter build apk --debug`: succeeded; installed on a physical iQOO Z3 (Android 13) and exercised through
+  onboarding, navigation, restart and SQLite read-back.
 
 ### Known gaps
 

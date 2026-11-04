@@ -23,7 +23,10 @@ class OnboardingDraft {
 
   final DietPattern diet = DietPattern.vegetarianNoEggs;
   final Set<DietRestriction> restrictions = <DietRestriction>{};
-  SleepPattern sleep = SleepPattern.irregular;
+
+  /// Deliberately unset: HomeFit must not claim a sleep pattern the user
+  /// never reported, because recovery guidance depends on it.
+  SleepPattern? sleep;
   bool notificationsEnabled = true;
 
   // Baseline assessment (all optional).
@@ -59,6 +62,7 @@ class OnboardingDraft {
         }
         return null;
       case 3:
+        if (sleep == null) return 'Choose how your sleep usually is.';
         return null;
       case 4:
         for (final int? value in <int?>[
@@ -90,7 +94,7 @@ class OnboardingDraft {
       trainingTime: trainingTime,
       diet: diet,
       restrictions: Set<DietRestriction>.unmodifiable(restrictions),
-      sleep: sleep,
+      sleep: sleep!,
       notificationsEnabled: notificationsEnabled,
       createdAt: now,
       updatedAt: now,

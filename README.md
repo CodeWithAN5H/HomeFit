@@ -26,8 +26,9 @@ What actually works in this build:
   and a home screen that summarises the saved profile and gives sleep-aware recovery guidance.
 - An honest "not built yet" state on every tab whose features are still missing — no dead controls.
 
-Verified commands: `flutter analyze` → no issues; `flutter test` → 29 tests pass; debug APK builds.
-Full detail, including limitations, is in [PROJECT_STATUS.md](PROJECT_STATUS.md).
+Verified: `flutter analyze` → no issues; `flutter test` → 33 tests pass; the debug APK was installed and
+exercised on a physical iQOO Z3 (Android 13) through onboarding, all five tabs, restart and SQLite
+read-back. Full detail, including limitations, is in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Documentation
 

@@ -52,13 +52,18 @@ class SelectableChip extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpacing.sm),
                   ],
-                  Text(
-                    label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                      color: selected
-                          ? AppColors.textPrimary
-                          : AppColors.textMuted,
+                  Flexible(
+                    child: Text(
+                      label,
+                      softWrap: true,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: selected
+                            ? AppColors.textPrimary
+                            : AppColors.textMuted,
+                      ),
                     ),
                   ),
                 ],
