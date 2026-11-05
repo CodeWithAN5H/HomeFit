@@ -15,8 +15,8 @@ HomeFit is being built for **Android first**, with Windows and Linux planned. Al
 ## Current status
 
 **M0 complete · M1 implemented and tested · M2 verified · M2.2 profile editing done · M3 offline exercise
-library done · M4 guided training done.** Nutrition, progress, coaching and notifications are **not
-implemented yet**.
+library done · M4 guided training done · M5 offline nutrition done.** Progress, coaching and notifications
+are **not implemented yet**.
 
 What actually works in this build:
 
@@ -33,15 +33,22 @@ What actually works in this build:
   targets, and a guided runner with set logging, skip set/exercise, pause/resume, a rest timer that survives
   backgrounding and restarts, and confirm-before-discard. History lists completed, abandoned and interrupted
   sessions with the real sets and reps, and rep targets move only from recorded performance and effort.
+- **Nutrition engine** (M5): a bundled catalogue of 55 Indian vegetarian foods (per 100 g/ml, household
+  servings, raw/cooked states) and 13 recipes; a five-slot daily meal planner with save/load; a separate food
+  log with daily calories/protein/carbs/fat and day navigation; recipe search and detail with per-serving
+  estimates; a grocery checklist generated from a day's plan with duplicates merged, manual items and
+  purchased ticks; and a transparent, conservative target range derived only from the saved profile (no
+  target for under-18s, no BMI diagnosis, no promised rate of gain).
 - A dark Material 3 design system, five-destination navigation (Home, Workout, Nutrition, Progress, Coach),
   and a home screen that summarises the saved profile and gives sleep-aware recovery guidance.
 - An honest "not built yet" state on every tab whose features are still missing — no dead controls.
 
-Verified: `flutter analyze` → no issues; `flutter test` → 206 tests pass; the debug APK was installed over an
-existing schema-v1 install and exercised on a physical iQOO Z3 (Android 13) through onboarding, profile
-editing, the exercise library, the whole training flow (start, set logging, rest, pause, skips, finish,
-summary, effort, history) and a force-stop/relaunch mid-session, plus a v1 → v2 database upgrade that kept
-the profile. Full detail, including limitations, is in [PROJECT_STATUS.md](PROJECT_STATUS.md).
+Verified: `flutter analyze` → no issues; `flutter test` → 285 tests pass; the debug APK was installed over an
+existing install and exercised on a physical iQOO Z3 (Android 13) through onboarding, profile editing, the
+exercise library, the whole training flow, a force-stop/relaunch mid-session, and the nutrition flow (targets,
+planner, food log, recipes, grocery generation, manual item, tick, restart persistence), plus v1 → v2 and
+v2 → v3 database upgrades that kept existing data. Full detail, including limitations, is in
+[PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Documentation
 
@@ -52,6 +59,7 @@ the profile. Full detail, including limitations, is in [PROJECT_STATUS.md](PROJE
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Data model, units, deletion and migration policy |
 | [EXERCISE_LIBRARY.md](EXERCISE_LIBRARY.md) | The bundled exercise catalogue, filters, alternatives ranking and how to add a movement |
 | [WORKOUT_ENGINE.md](WORKOUT_ENGINE.md) | Schedule, modes, templates, runner, rest timer, history and progression rules |
+| [NUTRITION.md](NUTRITION.md) | Food and recipe catalogues, targets and assumptions, planner/log separation, grocery generation, schema and tests |
 | [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) | Milestones, release gates and definition of done |
 | [CHANGELOG.md](CHANGELOG.md) | What actually changed, per version |
 
@@ -62,7 +70,8 @@ the profile. Full detail, including limitations, is in [PROJECT_STATUS.md](PROJE
 - **Riverpod** — state management and dependency injection
 - **go_router** — navigation with a five-destination shell and an onboarding redirect
 - **Drift / SQLite** — local structured storage with a versioned schema and migrations
-- **Const Dart datasets** — the exercise catalogue ships in code, so the library is instant and fully offline
+- **Const Dart datasets** — the exercise, food and recipe catalogues ship in code, so everything is instant
+  and fully offline
 
 Package versions are pinned in `pubspec.lock` and were resolved against the installed SDK, not guessed.
 
@@ -83,7 +92,8 @@ lib/
     dashboard/          # home screen
     exercises/          # bundled catalogue, query engine, library + detail screens
     workouts/           # schedule, templates, planner, runner, history, progression + UI
-    nutrition/ progress/ coach/   # honest not-built-yet states
+    nutrition/          # catalogues, totals, targets, plans, logs, recipes, grocery + UI
+    progress/ coach/    # honest not-built-yet states
   shared/widgets/       # card, chips, number field, detail rows, milestone notice
 test/
   app/  core/  features/  widget/  fixtures/   # routing, unit, database, controller and widget tests

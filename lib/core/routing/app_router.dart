@@ -6,7 +6,11 @@ import '../../features/coach/presentation/coach_screen.dart';
 import '../../features/dashboard/presentation/home_screen.dart';
 import '../../features/exercises/presentation/exercise_detail_screen.dart';
 import '../../features/exercises/presentation/exercise_library_screen.dart';
+import '../../features/nutrition/presentation/food_log_screen.dart';
+import '../../features/nutrition/presentation/grocery_screen.dart';
+import '../../features/nutrition/presentation/meal_plan_screen.dart';
 import '../../features/nutrition/presentation/nutrition_screen.dart';
+import '../../features/nutrition/presentation/recipe_library_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/profile/application/profile_providers.dart';
 import '../../features/profile/domain/user_profile.dart';
@@ -126,6 +130,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.nutrition,
                 builder: (context, state) => const NutritionScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'plan',
+                    builder: (context, state) => const MealPlanScreen(),
+                  ),
+                  GoRoute(
+                    path: 'log',
+                    builder: (context, state) => const FoodLogScreen(),
+                  ),
+                  GoRoute(
+                    path: 'recipes',
+                    builder: (context, state) => const RecipeLibraryScreen(),
+                    routes: [
+                      GoRoute(
+                        path: ':recipeId',
+                        builder: (context, state) => RecipeDetailScreen(
+                          recipeId: state.pathParameters['recipeId'] ?? '',
+                        ),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'grocery',
+                    builder: (context, state) => const GroceryScreen(),
+                  ),
+                ],
               ),
             ],
           ),

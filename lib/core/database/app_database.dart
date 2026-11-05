@@ -20,6 +20,11 @@ part 'app_database.g.dart';
     WorkoutSessionRows,
     WorkoutSessionExerciseRows,
     WorkoutSetRows,
+    FoodLogRows,
+    MealPlanItemRows,
+    SavedMealPlanRows,
+    SavedMealPlanItemRows,
+    GroceryItemRows,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -29,10 +34,10 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   /// v1: profile + assessment. v2: workout sessions, session exercises and set
-  /// logs (M4). The migration only creates tables, so no existing row is
-  /// touched.
+  /// logs (M4). v3: food log, meal plans, saved plans and grocery checklist
+  /// (M5). Every migration only creates tables, so no existing row is touched.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -44,6 +49,13 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(workoutSessionRows);
         await migrator.createTable(workoutSessionExerciseRows);
         await migrator.createTable(workoutSetRows);
+      }
+      if (from < 3) {
+        await migrator.createTable(foodLogRows);
+        await migrator.createTable(mealPlanItemRows);
+        await migrator.createTable(savedMealPlanRows);
+        await migrator.createTable(savedMealPlanItemRows);
+        await migrator.createTable(groceryItemRows);
       }
     },
     beforeOpen: (OpeningDetails details) async {

@@ -23,7 +23,9 @@ class AppCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
-      child: child,
+      // A transparent Material keeps ListTile and CheckboxListTile ink inside
+      // the card instead of asserting about the decorated box above them.
+      child: Material(type: MaterialType.transparency, child: child),
     );
   }
 }

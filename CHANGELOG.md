@@ -3,6 +3,58 @@
 All notable changes to HomeFit are recorded here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use `0.x` during development.
 
+## [Unreleased] — M5 offline nutrition engine (2026-11-05)
+
+Nutrition is now usable end to end and entirely offline: a bundled Indian vegetarian food and recipe
+catalogue, a daily meal planner, a separate food log with day totals, a recipe library, a generated grocery
+checklist and transparent, conservative targets derived from the saved profile.
+
+### Added
+
+- **Nutrition dashboard**: estimated target range with a "How this is estimated" dialog, today's logged vs
+  planned totals, per-meal plan/log rows, entries to planner/log/recipes/grocery, and a safety card.
+- **Food catalogue** of **55 foods** as const Dart, per 100 g or 100 ml, with household serving presets
+  (roti, katori, glass, bowl…), raw/cooked/prepared state, explicit units and source/estimate notes.
+- **Meal planner** (`/nutrition/plan`) for breakfast, lunch, evening snack, dinner and an optional extra
+  snack: add food or recipe, change quantities, remove, per-slot and day estimates, save/load/delete
+  reusable plans, and generate a grocery list.
+- **Food log** (`/nutrition/log`) kept separate from the plan: search and log per meal, edit, delete with
+  confirmation, daily calories/protein/carbs/fat, meal-wise breakdown, previous-day navigation and target
+  comparison.
+- **Recipe library** (`/nutrition/recipes`, 13 recipes) with search, dietary filters, per-serving estimates
+  computed from ingredients, ingredients with quantities, numbered method and add-to-meal with servings.
+- **Grocery checklist** (`/nutrition/grocery`): generated from a planned day, duplicates merged and recipes
+  expanded at the planned scale; manual items, purchased ticks, removal, confirmed clear and persistence.
+  Nothing is marked purchased automatically.
+- **Targets from the saved profile only**: 30–35 kcal/kg maintenance, +200–300 kcal only for a gain goal,
+  conservative calorie floor, 1.2–1.6 g/kg protein, no target for under-18s (referral message instead), and
+  every assumption disclosed. No BMI diagnosis, no guaranteed rate of gain, no restrictive advice.
+- **Schema v3** with five additive tables (`food_log_rows`, `meal_plan_item_rows`, `saved_meal_plan_rows`,
+  `saved_meal_plan_item_rows`, `grocery_item_rows`) and a v2 → v3 migration that only creates tables.
+- **79 new tests (285 total)**: catalogue integrity, per-serving and quantity maths, targets, date keys and
+  boundaries, plan/log separation, recipes, grocery aggregation, repository round trips, a real-file
+  v2 → v3 migration, and widget tests for every nutrition screen.
+
+### Fixed
+
+- `ListTile` and `CheckboxListTile` inside `AppCard` tripped Flutter's "ink may be invisible" assertion; the
+  card now wraps its child in a transparent `Material`.
+- `dateFromKey` normalised impossible dates into other days; it now validates and falls back.
+- The amount sheet saved a bare gram value instead of the household preset it defaulted to; it now records
+  the preset label ("1 roti").
+- The dashboard safety-card header overflowed at phone width; the title wraps in an `Expanded`.
+- Plan and grocery name dialogs disposed their text controller while still animating out; a shared dialog
+  now owns it.
+
+### Verification
+
+- `flutter analyze`: no issues.
+- `flutter test`: 285 passed.
+- Debug APK installed over the existing install; the profile and workout history survived, and the dashboard,
+  targets dialog, planner (food and recipe at 1.5 servings), food log, recipe library/detail, grocery
+  generation, manual item, tick and force-stop persistence were exercised on the iQOO Z3 without exceptions
+  or overflow warnings.
+
 ## [Unreleased] — M4 workout engine (2026-11-05)
 
 Guided training now exists: a schedule-aware dashboard, five session modes, seven templates, a runner that

@@ -1,8 +1,9 @@
 # HomeFit — Architecture
 
-Status: **core implemented in M1–M4.** The layering, feature module layout, theme, routing, dependency
-injection, Drift profile store, the offline exercise library and the workout engine exist as described. The
-nutrition, consistency and progress engines are still design and will be added behind the same boundaries.
+Status: **core implemented in M1–M5.** The layering, feature module layout, theme, routing, dependency
+injection, Drift store, the offline exercise library, the workout engine and the offline nutrition engine
+exist as described. The consistency and progress engines are still design and will be added behind the same
+boundaries.
 
 ---
 
@@ -103,9 +104,9 @@ discarding an unfinished session.
 
 Drift (SQLite) with versioned migrations — see [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). SQLite is opened
 with foreign keys enabled and a documented migration path per schema version. Schema **v2** adds the three
-workout tables; the v1 → v2 step only creates them, so an existing profile survives untouched. Seeded content (exercises,
-foods, recipes) is loaded from bundled JSON into tables with stable string IDs, so user data references
-content that survives app updates.
+workout tables and **v3** the five nutrition tables; every upgrade step so far only creates tables, so an
+existing profile and history survive untouched. Seeded content (exercises, foods, recipes) lives in const Dart
+with stable string IDs, so user data references content that survives app updates.
 
 Important state is never memory-only: an in-progress session writes its set records as they are completed,
 its pause state and absolute rest end time, so a process kill loses at most the current set and never the
@@ -113,12 +114,12 @@ timer's position.
 
 ### Reference content: code first, tables later
 
-The M3 exercise catalogue deliberately ships as **const Dart data** (`lib/features/exercises/data/catalog/`,
-merged into one read-only list) instead of seeded tables or bundled JSON. It is complete at compile time, so
-there is no loader, no async state and nothing to fail offline, and the dataset can be asserted in plain unit
-tests. Exercise ids are already stable lowercase slugs, so M4 workout history can store references that
-survive app updates; the catalogue moves into seeded tables only when a query actually needs SQL (for example
-searching exercises together with logged sets). Schema v1 is therefore unchanged by M3.
+The M3 exercise catalogue and the M5 food/recipe catalogues deliberately ship as **const Dart data**
+(`lib/features/exercises/data/catalog/`, `lib/features/nutrition/data/catalog/`) instead of seeded tables or
+bundled JSON. They are complete at compile time, so there is no loader, no async state and nothing to fail
+offline, and the datasets can be asserted in plain unit tests. Their ids are stable lowercase slugs, so workout
+history, meal plans and food logs can store references that survive app updates; the catalogues move into
+seeded tables only when a query actually needs SQL (for example searching foods together with logs).
 
 ## Workout engine (M4)
 
@@ -137,6 +138,28 @@ The runner is an `AsyncNotifier` with an explicit position (`exerciseIndex`, `se
 stored set logs, so reopening the app restores the session instead of starting over. Domain code stays free
 of Flutter and SQL, which is why the schedule, planner and progression rules are unit tested without a
 widget tree.
+
+## Nutrition engine (M5)
+
+Nutrition reuses the same boundaries, with pure Dart doing all the numbers:
+
+| Concern | Where | Rule |
+| --- | --- | --- |
+| Food and recipe data | `data/catalog/foods.dart`, `recipes.dart` | Const Dart with stable slugs, per-100 values, household servings and explicit raw/cooked state; no loader and no network |
+| Totals and serving maths | `domain/nutrition_totals.dart`, `food_item.dart`, `nutrition_units.dart` | Pure scaling and addition; unrounded internally, rounded only for display |
+| Day keys | `domain/nutrition_units.dart` | Local `yyyy-MM-dd` text, validated on parse, so late meals stay on their calendar day |
+| Targets | `domain/nutrition_targets.dart` | Pure function of the saved profile; a range with disclosed assumptions, withheld for minors |
+| One day of nutrition | `domain/nutrition_day.dart` | Joins stored plan and log rows with the catalogues; resolves recipe items into ingredient nutrition |
+| Grocery planning | `domain/grocery.dart` | Pure merge of `foodId|unit`, recipe expansion by serving factor, sorted output |
+| Writes | `application/nutrition_providers.dart` (`NutritionActions`) | Screens call actions; every write invalidates only the affected day or list |
+
+**Planned meals and actual logs are separate tables and separate providers.** There is no code path that
+copies a plan into the log, so editing a plan cannot rewrite history and logging cannot change a plan.
+Recipes carry no stored nutrition: per-serving figures are computed from ingredient foods on demand, which
+keeps the recipe card, detail screen and grocery list consistent with the catalogue by construction.
+
+A log entry stores its nutrition snapshot with the food id, so later catalogue corrections never rewrite a
+past day. Saved plans are templates without a date key; loading one recreates item ids for the target day.
 
 ## Platform-specific functionality
 

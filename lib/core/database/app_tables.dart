@@ -97,6 +97,91 @@ class WorkoutSetRows extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// One food actually eaten. Nutrition is snapshotted at log time so catalogue
+/// corrections never rewrite a past day; [foodId] stays for editing.
+class FoodLogRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get dateKey => text()();
+  TextColumn get slot => text()();
+  TextColumn get foodId => text()();
+  TextColumn get foodName => text()();
+  RealColumn get amount => real()();
+  TextColumn get unit => text()();
+  TextColumn get servingLabel => text().nullable()();
+  RealColumn get kcal => real()();
+  RealColumn get proteinG => real()();
+  RealColumn get carbsG => real()();
+  RealColumn get fatG => real()();
+  DateTimeColumn get loggedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// One planned food or recipe in a day's plan. [sourceId] is a bundled food or
+/// recipe slug; the catalogue lives in code, so there is no foreign key.
+class MealPlanItemRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get dateKey => text()();
+  TextColumn get slot => text()();
+  TextColumn get kind => text()();
+  TextColumn get sourceId => text()();
+  TextColumn get name => text()();
+  RealColumn get amount => real()();
+  TextColumn get unit => text()();
+  TextColumn get servingLabel => text().nullable()();
+  IntColumn get orderIndex => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// A named plan the user can load onto another day.
+class SavedMealPlanRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// One item of a saved plan. No date key: a template is not bound to a day.
+class SavedMealPlanItemRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get planId =>
+      text().references(SavedMealPlanRows, #id, onDelete: KeyAction.cascade)();
+  TextColumn get slot => text()();
+  TextColumn get kind => text()();
+  TextColumn get sourceId => text()();
+  TextColumn get name => text()();
+  RealColumn get amount => real()();
+  TextColumn get unit => text()();
+  TextColumn get servingLabel => text().nullable()();
+  IntColumn get orderIndex => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// A shopping checklist line. Manual lines have no [foodId] and are never
+/// merged; generated lines can be refreshed from a plan without losing checks.
+class GroceryItemRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get foodId => text().nullable()();
+  RealColumn get amount => real().nullable()();
+  TextColumn get unit => text().nullable()();
+  BoolColumn get checked => boolean().withDefault(const Constant(false))();
+  TextColumn get source => text()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Baseline self-assessments. Every measurement is nullable because the user may
 /// legitimately be unable to do an exercise yet, or may skip the assessment.
 class AssessmentRows extends Table {

@@ -30,7 +30,7 @@ deleted (per instruction) and are not used by the project.
 | M2.2 | Profile editing and management | **Verified** — prepopulated editor, cancel, validated save into the single existing row, cleared validation feedback; 47 tests pass and the flow was exercised on the iQOO Z3 |
 | M3 | Exercise library | **Verified** — 44 bundled movements with search, muscle/equipment/difficulty filters, "my equipment only", detail screens and profile-ranked alternatives; 103 tests pass, analyzer clean, exercised on the iQOO Z3 |
 | M4 | Workout engine | **Verified** — schedule-aware dashboard, five modes, seven templates, guided runner with a persisted rest timer, history, effort capture and rule-based progression; 206 tests pass, analyzer clean, exercised on the iQOO Z3 including the v1 → v2 upgrade over the existing database |
-| M5 | Nutrition engine | Not started |
+| M5 | Nutrition engine | **Verified** — offline food catalogue (55 foods, 13 recipes), meal planner, separate food log with daily totals, recipe library, generated grocery checklist and transparent nutrition targets; schema v3 (v2 → v3 migration); 285 tests pass, analyzer clean, exercised on the iQOO Z3 over the existing install |
 | M6 | Notifications and consistency | Not started |
 | M7 | Progress tracking + Body Goal Timeline | Not started |
 | M8 | AI Plan Studio | Not started |
@@ -285,6 +285,91 @@ derived from stored sessions and sets — no extra table and no cached target th
 4. **The reps field was rebuilt with a fresh controller on every build**, which leaked controllers and could
    jump the cursor. The runner now owns and disposes one controller and reseeds it per set.
 
+## M5 — offline nutrition engine (2026-11-05)
+
+### What it does
+
+- The **Nutrition** tab is a dashboard: a transparent daily target range with a *How this is estimated*
+dialog, today's logged and planned totals with a progress bar, per-slot plan/log rows, the five meal rows,
+and entries to the planner, food log, recipe library and grocery checklist, plus a safety card.
+- **Meal planner** (`/nutrition/plan`): day navigation, five slots, add a food (search + household portion or
+  grams) or a recipe (serving count), change quantity, remove, day and per-slot estimates, save a reusable
+  plan, load or delete saved plans, and generate a grocery list.
+- **Food log** (`/nutrition/log`): separate from the plan — search and log per slot, edit, delete with
+  confirmation, daily calories/protein/carbs/fat, meal breakdown, previous-day navigation and a comparison
+  against the target range.
+- **Recipes** (`/nutrition/recipes`): 13 affordable vegetarian recipes with search, dietary filters,
+  per-serving estimates, ingredients, numbered method and *Add to a meal plan* with a serving choice.
+- **Grocery checklist** (`/nutrition/grocery`): generated from a planned day with duplicates combined and
+  recipe ingredients expanded at the planned scale; manual additions, purchased ticks, removal, confirmed
+  clearing and persistent state. Nothing is ticked automatically.
+
+### Data and calculations
+
+- **55 foods** and **13 recipes** as const Dart (`lib/features/nutrition/data/catalog/`), per 100 g or 100 ml,
+  with household servings, raw/cooked/prepared state, sources (rounded IFCT 2017 / USDA reference values),
+  estimate notes and stable slug ids.
+- Recipe nutrition is computed from its ingredients at display time, never stored, so the per-serving number
+  cannot disagree with the ingredient list; changing servings scales the whole list.
+- **Targets** come only from the saved profile: 30–35 kcal/kg maintenance, +200–300 kcal only for a saved
+  gain goal, a conservative calorie floor, 1.2–1.6 g/kg protein, and **no target under 18** (with a
+  doctor/dietitian message instead). Assumptions are listed in the app; no BMI diagnosis, no promised rate of
+  gain, no cutting advice.
+- Days are local `yyyy-MM-dd` keys, so a late-night meal stays on its day; impossible keys fall back rather
+  than being normalised into another date.
+
+### Schema and migration
+
+Schema **v3** adds five additive tables (`food_log_rows`, `meal_plan_item_rows`, `saved_meal_plan_rows`,
+`saved_meal_plan_item_rows`, `grocery_item_rows`). The v2 → v3 step only creates them; no existing row is
+rewritten and the change was tested against a real temporary database rewound to v2 (profile and workout
+history intact). See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) and [NUTRITION.md](NUTRITION.md).
+
+### Tests (79 new, 285 total)
+
+| File | Covers |
+| --- | --- |
+| `test/features/nutrition/food_catalogue_test.dart` | Catalogue integrity: unique slug ids, sane nutrition, household servings and units, raw/cooked distinction, vegetarian/egg-free, search and category filter, recipe references and tags |
+| `nutrition_calculations_test.dart` | Per-100 and per-serving maths, quantity changes, liquids, unrounded totals, display rounding, meal sums |
+| `nutrition_targets_test.dart` | Exact target range, maintenance vs gain, calorie floor, minor unavailable, assumption wording |
+| `nutrition_date_test.dart` | Day keys, midnight boundary, invalid dates, month/year transitions |
+| `nutrition_day_test.dart` | Planned vs logged totals, slot ordering, unknown ids, empty day |
+| `recipe_test.dart` | Ingredient sum, per-serving division, scaling (0.5–4 servings), missing foods, search and tags |
+| `grocery_planner_test.dart` | Duplicate merge, recipe expansion, direct+recipe merge, unknown ids, ordering, no auto-check |
+| `nutrition_repository_test.dart` | Log/plan round trips, day filtering, plan/log independence, saved plans incl. cascade delete, grocery checked state |
+| `nutrition_migration_test.dart` | Real v2 file database → v3 with profile and workout session preserved |
+| `test/widget/nutrition_dashboard_test.dart` | Targets, diet label, today card, empty plan, assumptions dialog, minor message, navigation |
+| `test/widget/nutrition_plan_log_test.dart` | Add food/recipe, serving adjustment, removal, day change, log totals, plan untouched, delete confirmation |
+| `test/widget/nutrition_recipes_test.dart` | Search, tag filter, empty state, detail, add-to-plan, unknown id |
+| `test/widget/nutrition_grocery_test.dart` | Generate/merge, manual add, tick, remove, clear confirmation, empty plan |
+
+### Device verification (iQOO Z3, Android 13)
+
+| Check | Result |
+| --- | --- |
+| Upgrade in place | Installed over the existing install: profile (30 y, 180 cm, 58.0 kg, beginner, 45 min evening) and workout history intact; v3 tables created without an error screen |
+| Dashboard | 1940–2330 kcal, 70–93 g protein, *Vegetarian · no eggs*, 0 kcal today, empty plan, five slots, recipes/grocery entries and the safety card |
+| Target assumptions | Dialog listed the per-kg basis, modest surplus, missing sex, self-reported weight and the not-medical statement |
+| Planner | Roti at 1 roti · 40 g → 104 kcal; khichdi at 1.5 servings → day 709 kcal / 23 g protein, with per-slot estimates and remove controls |
+| Food log | Banana at 1 medium · 118 g → 105 kcal, 1 g protein, 27 g carbs; planned total unchanged at 709 kcal |
+| Recipes | 13 recipes with search/filters; detail showed estimate badge, 335 kcal / 13 g protein per serving, three ingredients, numbered method and allergy note |
+| Grocery | Five merged lines from the plan (ghee 6 g, mixed veg 113 g, moong dal 150 g, rice 225 g, roti 40 g); manual "Salt" added; ghee ticked → *5 of 6 still to buy* |
+| Restart | Force-stop + relaunch kept 105 kcal logged, 709 kcal planned and the 5-of-6 checklist including the tick and manual item |
+| Existing features | Workout tab still shows the recovery day, modes and targeted chips; Home still shows the same profile and Edit entry |
+| Logs | No Flutter exceptions, overflow warnings or crash entries during the pass |
+
+### Defects found and fixed during M5
+
+1. **`ListTile`/`CheckboxListTile` inside `AppCard`** triggered Flutter's ink assertion; the card now wraps
+   its child in a transparent `Material`.
+2. **Impossible day keys were normalised into other dates**; `dateFromKey` validates the round trip and falls
+   back.
+3. **The amount sheet saved a bare gram value** although the first household preset was shown; it now
+   selects that preset, so the stored label is "1 roti".
+4. **The safety-card header overflowed by 231 px** at 393 dp; the title is now `Expanded`.
+5. **Name dialogs disposed their controller mid-animation**, breaking the widget tests; the shared
+   `showTextPrompt` dialog owns it instead.
+
 ## What M1 actually delivers
 
 - **Design system** (`lib/core/theme`): dark charcoal/navy palette, one blue and one violet accent, 20 dp
@@ -335,6 +420,9 @@ derived from stored sessions and sets — no extra table and no cached target th
 | `flutter test` after M4 | **206 tests passed** (templates, schedule, planner, progression, repository and migration, runner, and dashboard/preview/runner/summary/history widgets) |
 | `flutter analyze` after M4 | **No issues found** |
 | `adb install -r` + manual pass on iQOO Z3 (M4) | Upgrade over the v1 database, dashboard, preview, start, set logging, rest countdown, pause/resume, skips, end/finish summary, effort, history detail, resume after force-stop |
+| `flutter test` after M5 | **285 tests passed** (catalogue integrity, calculations, targets, dates, plan/log separation, recipes, grocery, repository, v2 → v3 migration, and dashboard/planner/log/recipes/grocery widgets) |
+| `flutter analyze` after M5 | **No issues found** |
+| `adb install -r` + manual pass on iQOO Z3 (M5) | Nutrition dashboard, target assumptions, planner with food and recipe (1.5 servings), food log with daily totals, recipe library/detail, grocery generation with merge and manual item, tick, force-stop persistence, workout history and profile intact |
 
 ## Known limitations (honest list)
 
@@ -345,12 +433,12 @@ derived from stored sessions and sets — no extra table and no cached target th
 3. **No profile reset or delete.** There is no way to clear the local profile from inside the app yet.
 4. **Unsaved edits are discarded on Back/Cancel without a confirmation prompt.** Deliberate for now, but it
    can lose typing.
-5. **No nutrition, progress or coaching features.** Training (M4) exists; the other three tabs state that
-   they are not built yet.
+5. **Progress and coaching are not built.** Training (M4) and nutrition (M5) exist; the Progress and Coach
+   tabs still state that they are not built yet.
 6. **No notifications.** The reminder *preference* is stored; nothing is scheduled, and no permission flow
    exists yet.
-7. **Migrations are only tested for v1 → v2.** The harness covers the only upgrade that exists; every later
-   schema version must add its own migration case.
+7. **Migrations are tested for v1 → v2 and v2 → v3.** Every later schema version must add its own migration
+   case on a real temporary database.
 8. **Device coverage is a single phone.** Validation ran on one iQOO Z3 (Android 13, 440 dpi). Other
    densities, Android 14/15 behaviour and tablets are untested.
 9. **Only the debug APK was exercised.** Release shrinking, AAB packaging and release signing remain
@@ -372,3 +460,17 @@ derived from stored sessions and sets — no extra table and no cached target th
     correct a mistyped set after finishing.
 18. **One fixed rotation.** Three full-body templates and no user-built split; Plan Studio (M8) owns custom
     plans.
+19. **Nutrition values are estimates**, with no barcode scanning, packaged-label import or lab accuracy; home
+    cooking oil and portion size are the largest sources of error.
+20. **The food catalogue is fixed at 55 foods and 13 recipes.** It is easy to extend in code, but there is no
+    in-app food editor, custom food creation or import.
+21. **Only calories, protein, carbs and fat** are tracked — no fibre, micronutrients, sodium or cost.
+22. **Meal planning is manual.** Recipes can be browsed and added, but there are no automatic suggestions,
+    weekly plans or copy-between-days actions.
+23. **Saved plans cannot be renamed or edited**, only loaded onto a day or deleted; loading replaces that
+    day's plan (logs are unaffected).
+24. **Grocery manual items are never merged** with generated lines, and grams/millilitres are never converted
+    between units.
+25. **Nutrition targets cannot account for sex or measured activity** because the profile stores neither;
+    the app therefore shows a wide range and withholds targets for minors.
+26. **Nutrition days are local calendar days.** Travelling across time zones does not re-key existing entries.

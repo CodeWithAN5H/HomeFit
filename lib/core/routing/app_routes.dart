@@ -41,6 +41,14 @@ abstract final class AppRoutes {
       '$workoutHistory/$sessionId';
 
   static const String nutrition = '/nutrition';
+  static const String nutritionPlan = '$nutrition/plan';
+  static const String nutritionLog = '$nutrition/log';
+  static const String nutritionRecipes = '$nutrition/recipes';
+  static const String nutritionGrocery = '$nutrition/grocery';
+
+  /// Detail screen for one bundled recipe.
+  static String nutritionRecipeDetail(String recipeId) =>
+      '$nutritionRecipes/$recipeId';
   static const String progress = '/progress';
   static const String coach = '/coach';
   static const String profileEdit = '/profile/edit';
