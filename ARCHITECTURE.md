@@ -1,8 +1,8 @@
 # HomeFit — Architecture
 
-Status: **core implemented in M1–M3.** The layering, feature module layout, theme, routing, dependency
-injection, Drift profile store and the offline exercise library exist as described. The training, nutrition,
-consistency and progress engines are still design and will be added behind the same boundaries.
+Status: **core implemented in M1–M4.** The layering, feature module layout, theme, routing, dependency
+injection, Drift profile store, the offline exercise library and the workout engine exist as described. The
+nutrition, consistency and progress engines are still design and will be added behind the same boundaries.
 
 ---
 
@@ -102,12 +102,14 @@ discarding an unfinished session.
 ## Persistence
 
 Drift (SQLite) with versioned migrations — see [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). SQLite is opened
-with foreign keys enabled and a documented migration path per schema version. Seeded content (exercises,
+with foreign keys enabled and a documented migration path per schema version. Schema **v2** adds the three
+workout tables; the v1 → v2 step only creates them, so an existing profile survives untouched. Seeded content (exercises,
 foods, recipes) is loaded from bundled JSON into tables with stable string IDs, so user data references
 content that survives app updates.
 
 Important state is never memory-only: an in-progress session writes its set records as they are completed,
-so a process kill loses at most the current set.
+its pause state and absolute rest end time, so a process kill loses at most the current set and never the
+timer's position.
 
 ### Reference content: code first, tables later
 
@@ -117,6 +119,24 @@ there is no loader, no async state and nothing to fail offline, and the dataset 
 tests. Exercise ids are already stable lowercase slugs, so M4 workout history can store references that
 survive app updates; the catalogue moves into seeded tables only when a query actually needs SQL (for example
 searching exercises together with logged sets). Schema v1 is therefore unchanged by M3.
+
+## Workout engine (M4)
+
+The only feature with real state transitions, so its boundaries are explicit:
+
+| Concern | Where | Rule |
+| --- | --- | --- |
+| What to do today | `domain/workout_schedule.dart` | Pure function of stored sessions + profile; the calendar alone never advances anything |
+| Which movements and targets | `domain/workout_planner.dart` + `data/workout_templates.dart` | Const templates with preferred-id chains; the planner drops slots the profile cannot perform and applies overrides |
+| Progression | `domain/progression.dart` | Pure rules over derived per-exercise history; no model, no cached target |
+| Running a session | `application/workout_providers.dart` (`WorkoutRunnerController`) | Every action writes through `WorkoutRepository` before the state changes |
+| Rest | Session row (`restEndsAt`, `restRemainingSeconds`) | Absolute instant, not a local tally; the ticker lives in a small widget |
+| History | `data/workout_repository.dart` + `domain/workout_history.dart` | Read back from stored sessions and sets; statuses distinguish completed/abandoned/interrupted |
+
+The runner is an `AsyncNotifier` with an explicit position (`exerciseIndex`, `setIndex`) derived from the
+stored set logs, so reopening the app restores the session instead of starting over. Domain code stays free
+of Flutter and SQL, which is why the schedule, planner and progression rules are unit tested without a
+widget tree.
 
 ## Platform-specific functionality
 

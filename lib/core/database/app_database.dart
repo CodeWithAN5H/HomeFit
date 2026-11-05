@@ -13,20 +13,38 @@ part 'app_database.g.dart';
 ///
 /// Schema changes must bump [schemaVersion] and add a matching step in
 /// [migration] (see DATABASE_SCHEMA.md).
-@DriftDatabase(tables: [ProfileRows, AssessmentRows])
+@DriftDatabase(
+  tables: [
+    ProfileRows,
+    AssessmentRows,
+    WorkoutSessionRows,
+    WorkoutSessionExerciseRows,
+    WorkoutSetRows,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   /// In-memory database used by tests.
   AppDatabase.memory() : super(NativeDatabase.memory());
 
+  /// v1: profile + assessment. v2: workout sessions, session exercises and set
+  /// logs (M4). The migration only creates tables, so no existing row is
+  /// touched.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator migrator) async {
       await migrator.createAll();
+    },
+    onUpgrade: (Migrator migrator, int from, int to) async {
+      if (from < 2) {
+        await migrator.createTable(workoutSessionRows);
+        await migrator.createTable(workoutSessionExerciseRows);
+        await migrator.createTable(workoutSetRows);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       // Drift opens SQLite with foreign keys off by default; assessment rows

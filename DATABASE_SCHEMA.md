@@ -1,11 +1,12 @@
 # HomeFit — Database Schema
 
-Status: **schema v1 implemented (M2).** `profile_rows` and `assessment_rows` exist in
-`lib/core/database/app_tables.dart` with Drift `schemaVersion = 1`, foreign keys enabled on every open,
-and timestamps normalised to UTC by the mappers. Profile edits update the existing `primary` row in place
-(`insertOnConflictUpdate`), so editing never creates a duplicate row and `created_at` survives. Everything else in this document is the agreed target for
-the milestone that owns it and is **not implemented yet**. Any schema change must bump `schemaVersion`,
-ship a migration, and update this file in the same commit.
+Status: **schema v2 implemented (M4).** `profile_rows` and `assessment_rows` exist from v1; v2 adds
+`workout_session_rows`, `workout_session_exercise_rows` and `workout_set_rows`. Foreign keys are enabled on
+every open and timestamps are normalised to UTC by the mappers. Profile edits update the existing `primary`
+row in place (`insertOnConflictUpdate`), so editing never creates a duplicate row and `created_at` survives.
+The nutrition, progress, goal and backup tables below are the agreed target for the milestones that own
+them and are **not implemented yet**. Any schema change must bump `schemaVersion`, ship a migration, and
+update this file in the same commit.
 
 ---
 
@@ -24,7 +25,32 @@ ship a migration, and update this file in the same commit.
 - **Units:** every nutrition value stores its unit explicitly (`g`, `ml`, `kcal`, `mg`). Values sourced from
   a reference are marked `source` and `isApproximate`, because household portions and cooked weights vary.
 
-## Core tables
+## Implemented in v2 — workout engine
+
+Three additive tables, created by the v1 → v2 migration; no existing column changed and no data is touched.
+
+| Table | Columns |
+| --- | --- |
+| `workout_session_rows` | `id`, `template_id`, `template_name`, `mode`, `status`, `started_at`, `ended_at?`, `planned_minutes`, `perceived_effort?`, `is_paused`, `rest_ends_at?`, `rest_remaining_seconds?`, `last_activity_at` |
+| `workout_session_exercise_rows` | `id`, `session_id` → `workout_session_rows` (cascade), `exercise_id`, `order_index`, `planned_sets`, `target_reps?`, `target_seconds?`, `rest_seconds`, `skipped`, `completed_at?` |
+| `workout_set_rows` | `id`, `session_id` → `workout_session_rows` (cascade), `session_exercise_id` → `workout_session_exercise_rows` (cascade), `exercise_id`, `set_index`, `target_reps?`, `actual_reps?`, `target_seconds?`, `actual_seconds?`, `rest_seconds_taken?`, `skipped`, `completed_at` |
+
+Notes:
+
+- `status` is stored by name: `inProgress`, `completed`, `abandoned`, `interrupted`. Only `completed` counts as
+  a workout.
+- `mode` is stored by name: `normal`, `quick`, `recovery`, `targeted`, `skill`.
+- **`rest_ends_at` is an absolute UTC instant**, not a countdown, so rest stays correct across backgrounding
+  and process restarts. While paused, `rest_remaining_seconds` holds the frozen remainder and `rest_ends_at`
+  is null.
+- **`exercise_id` has no foreign key**: exercises are const Dart data with stable slugs, so history keeps
+  pointing at the right movement across releases without a seeded table.
+- The plan is **copied into the session** at start time (exercise rows with their targets), so editing a
+  template later cannot rewrite what the user actually did.
+- Set rows are inserted as each set is completed or skipped; a session delete cascades to its exercises and
+  sets.
+
+## Core tables (target model)
 
 ### Profile and preferences
 

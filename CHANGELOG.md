@@ -3,6 +3,61 @@
 All notable changes to HomeFit are recorded here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use `0.x` during development.
 
+## [Unreleased] — M4 workout engine (2026-11-05)
+
+Guided training now exists: a schedule-aware dashboard, five session modes, seven templates, a runner that
+stores every set as it happens, a rest timer that survives backgrounding and restarts, history, and
+rule-based progression.
+
+### Added
+
+- **Workout dashboard**: resume card for an unfinished session, today's recommendation with reason and
+  estimate, quick/recovery/skill entries, targeted muscle chips, recent sessions and the library entry.
+- **Schedule engine** (`WorkoutSchedule`): minimum two calendar days between strength sessions, A → B → C
+  rotation from stored sessions, recovery after training today or yesterday, quick sessions for short
+  session lengths, recovery offered (never silently imposed) after poor sleep.
+- **Five modes** (`WorkoutMode`) with persisted semantics: full, quick, recovery, targeted and skill; each has
+  an explanation shown before starting, and only full/targeted sessions drive progression.
+- **Seven templates** as const Dart data with preferred exercise-id chains, so one template adapts to
+  bodyweight-only or equipped profiles; the planner drops what the profile cannot perform, respects the
+  experience ceiling and the time budget, and applies manual rep overrides.
+- **Preview screen** with mode explanation, estimate, sets, difficulty, focus, safety notes and per-exercise
+  targets with −/+ adjustment.
+- **Runner**: complete set with edited actual reps or hold seconds, skip set, skip exercise, pause/resume,
+  rest countdown with skip, end dialog, automatic finish when every set is logged, and restoration of an
+  interrupted session (indexes and remaining rest) on reopen.
+- **Rest timer stored as an absolute instant** (`restEndsAt`, plus `restRemainingSeconds` while paused), so
+  backgrounding, locking or killing the app cannot make it drift.
+- **History and statuses**: `inProgress`, `completed`, `abandoned`, `interrupted`; only `completed` counts as
+  a workout, and history lists every attempt with sets, reps, duration and effort.
+- **Summary** with per-exercise report and a 1–5 effort choice stored on the session.
+- **Rule-based progression** (`ProgressionEngine`): +1 rep after two consecutive comfortable sessions, hold
+  after hard or unrecorded effort, −1 rep after ≤50 % completion or effort 5, recovery after a severe sleep
+  shortage; history derived from stored sessions, not a cached target.
+- **Schema v2**: `workout_session_rows`, `workout_session_exercise_rows` and `workout_set_rows` with cascade
+  deletes, plus a v1 → v2 migration that only creates the new tables.
+- **103 new tests (206 total)**: templates, schedule, planner, progression, repository incl. migration,
+  runner, and dashboard/preview/runner/summary/history widgets.
+
+### Fixed
+
+- Paused rest lost its remaining seconds, so resuming had nothing to restore; clearing the rest instant and
+  clearing the remaining time are now separate.
+- Creating a session silently discarded any set logs it carried; they are now written in the same
+  transaction.
+- Discarding a session could land on the summary of the abandoned session; the summary redirect is
+  suppressed for an explicit discard.
+- The reps field rebuilt its text controller on every build; the runner now owns and disposes one.
+
+### Verification
+
+- `flutter analyze`: no issues.
+- `flutter test`: 206 passed.
+- Debug APK installed over the existing schema-v1 install; the profile survived, and the dashboard, preview,
+  runner, rest timer, pause/resume, skips, finish/discard, summary, effort, history and the upgrade were
+  exercised on the iQOO Z3. Force-stopping after a set and relaunching restored the session with its set
+  count and next set.
+
 ## [0.1.0] — 2026-11-04
 
 First usable increment: a real app that onboards, stores a profile locally and navigates. Training and
@@ -106,6 +161,5 @@ nutrition are still absent and every affected tab says so.
 
 ### Known gaps
 
-Profile editing, exercise library, workout engine, nutrition engine, reminders, progress tracking, Body
-Goal Timeline, Plan Studio, backup/restore and release signing are not implemented. See
-[PROJECT_STATUS.md](PROJECT_STATUS.md).
+Workout engine (M4) is implemented; the nutrition engine, reminders, progress tracking, Body Goal Timeline,
+Plan Studio, backup/restore and release signing are not. See [PROJECT_STATUS.md](PROJECT_STATUS.md).

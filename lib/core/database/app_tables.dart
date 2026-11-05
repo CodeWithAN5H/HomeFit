@@ -27,6 +27,76 @@ class ProfileRows extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// One workout attempt, whether it finished or not.
+///
+/// [restEndsAt] stores an absolute instant instead of a countdown, so rest stays
+/// accurate if the app is backgrounded or the process is recreated. [status] is
+/// stored by name (`inProgress`, `completed`, `abandoned`, `interrupted`).
+class WorkoutSessionRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get templateId => text()();
+  TextColumn get templateName => text()();
+  TextColumn get mode => text()();
+  TextColumn get status => text()();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get endedAt => dateTime().nullable()();
+  IntColumn get plannedMinutes => integer()();
+  IntColumn get perceivedEffort => integer().nullable()();
+  BoolColumn get isPaused => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get restEndsAt => dateTime().nullable()();
+  IntColumn get restRemainingSeconds => integer().nullable()();
+  DateTimeColumn get lastActivityAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// The plan a session followed, copied in at start time.
+///
+/// [exerciseId] is the stable slug from the bundled catalogue. There is no
+/// foreign key because exercises live in code, not in a table; the ids are
+/// immutable, which is what keeps history readable across releases.
+class WorkoutSessionExerciseRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get sessionId =>
+      text().references(WorkoutSessionRows, #id, onDelete: KeyAction.cascade)();
+  TextColumn get exerciseId => text()();
+  IntColumn get orderIndex => integer()();
+  IntColumn get plannedSets => integer()();
+  IntColumn get targetReps => integer().nullable()();
+  IntColumn get targetSeconds => integer().nullable()();
+  IntColumn get restSeconds => integer()();
+  BoolColumn get skipped => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// One logged set, written as soon as the user completes or skips it.
+class WorkoutSetRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get sessionId =>
+      text().references(WorkoutSessionRows, #id, onDelete: KeyAction.cascade)();
+  TextColumn get sessionExerciseId => text().references(
+    WorkoutSessionExerciseRows,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get exerciseId => text()();
+  IntColumn get setIndex => integer()();
+  IntColumn get targetReps => integer().nullable()();
+  IntColumn get actualReps => integer().nullable()();
+  IntColumn get targetSeconds => integer().nullable()();
+  IntColumn get actualSeconds => integer().nullable()();
+  IntColumn get restSecondsTaken => integer().nullable()();
+  BoolColumn get skipped => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get completedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// Baseline self-assessments. Every measurement is nullable because the user may
 /// legitimately be unable to do an exercise yet, or may skip the assessment.
 class AssessmentRows extends Table {

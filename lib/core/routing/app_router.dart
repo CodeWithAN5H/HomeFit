@@ -12,7 +12,11 @@ import '../../features/profile/application/profile_providers.dart';
 import '../../features/profile/domain/user_profile.dart';
 import '../../features/profile/presentation/profile_edit_screen.dart';
 import '../../features/progress/presentation/progress_screen.dart';
+import '../../features/workouts/presentation/workout_history_screen.dart';
+import '../../features/workouts/presentation/workout_preview_screen.dart';
 import '../../features/workouts/presentation/workout_screen.dart';
+import '../../features/workouts/presentation/workout_session_screen.dart';
+import '../../features/workouts/presentation/workout_summary_screen.dart';
 import '../../app/home_shell.dart';
 import 'app_routes.dart';
 
@@ -71,6 +75,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.workout,
                 builder: (context, state) => const WorkoutScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'preview',
+                    builder: (context, state) => WorkoutPreviewScreen(
+                      mode: state.uri.queryParameters['mode'] ?? 'normal',
+                      templateId: state.uri.queryParameters['template'],
+                      muscle: state.uri.queryParameters['muscle'],
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'session',
+                    builder: (context, state) => const WorkoutSessionScreen(),
+                  ),
+                  GoRoute(
+                    path: 'summary/:sessionId',
+                    builder: (context, state) => WorkoutSummaryScreen(
+                      sessionId: state.pathParameters['sessionId'] ?? '',
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'history',
+                    builder: (context, state) => const WorkoutHistoryScreen(),
+                    routes: [
+                      GoRoute(
+                        path: ':sessionId',
+                        builder: (context, state) => WorkoutSessionDetailScreen(
+                          sessionId: state.pathParameters['sessionId'] ?? '',
+                        ),
+                      ),
+                    ],
+                  ),
                   GoRoute(
                     path: 'exercises',
                     builder: (context, state) => const ExerciseLibraryScreen(),

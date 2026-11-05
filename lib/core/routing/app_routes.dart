@@ -11,6 +11,35 @@ abstract final class AppRoutes {
   /// Detail screen for one bundled exercise.
   static String exerciseDetail(String exerciseId) =>
       '$workoutExercises/$exerciseId';
+
+  /// Preview of a session before it starts. [mode] is a [WorkoutMode] name;
+  /// [templateId] and [muscle] narrow what is planned.
+  static String workoutPreview({
+    required String mode,
+    String? templateId,
+    String? muscle,
+  }) {
+    return Uri(
+      path: '$workout/preview',
+      queryParameters: <String, String>{
+        'mode': mode,
+        'template': ?templateId,
+        'muscle': ?muscle,
+      },
+    ).toString();
+  }
+
+  /// The guided runner. Only reachable while a session is open.
+  static const String workoutSession = '$workout/session';
+
+  static String workoutSummary(String sessionId) =>
+      '$workout/summary/$sessionId';
+
+  static const String workoutHistory = '$workout/history';
+
+  static String workoutSessionDetail(String sessionId) =>
+      '$workoutHistory/$sessionId';
+
   static const String nutrition = '/nutrition';
   static const String progress = '/progress';
   static const String coach = '/coach';

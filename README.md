@@ -15,7 +15,8 @@ HomeFit is being built for **Android first**, with Windows and Linux planned. Al
 ## Current status
 
 **M0 complete · M1 implemented and tested · M2 verified · M2.2 profile editing done · M3 offline exercise
-library done.** Guided training, nutrition, progress, coaching and notifications are **not implemented yet**.
+library done · M4 guided training done.** Nutrition, progress, coaching and notifications are **not
+implemented yet**.
 
 What actually works in this build:
 
@@ -27,15 +28,20 @@ What actually works in this build:
 - **Offline exercise library** (M3): 44 movements with muscle group, difficulty, equipment, steps and form
   cues — search, muscle/equipment/difficulty filters, *my equipment only*, detail screens and alternatives
   ranked for the saved profile. Bundled in the app: no network, no assets, no photos.
+- **Workout engine** (M4): a schedule-aware dashboard (today's session with its reason, resume card, quick,
+  recovery, targeted and skill modes), a preview with mode explanation, safety notes and adjustable rep
+  targets, and a guided runner with set logging, skip set/exercise, pause/resume, a rest timer that survives
+  backgrounding and restarts, and confirm-before-discard. History lists completed, abandoned and interrupted
+  sessions with the real sets and reps, and rep targets move only from recorded performance and effort.
 - A dark Material 3 design system, five-destination navigation (Home, Workout, Nutrition, Progress, Coach),
   and a home screen that summarises the saved profile and gives sleep-aware recovery guidance.
 - An honest "not built yet" state on every tab whose features are still missing — no dead controls.
 
-Verified: `flutter analyze` → no issues; `flutter test` → 103 tests pass; the debug APK was installed and
-exercised on a physical iQOO Z3 (Android 13) through onboarding, profile editing (save, cancel, invalid
-input, restart), the exercise library (search, filters, empty state, detail, alternatives), all five tabs,
-Back behaviour and SQLite read-back. Full detail, including limitations, is in
-[PROJECT_STATUS.md](PROJECT_STATUS.md).
+Verified: `flutter analyze` → no issues; `flutter test` → 206 tests pass; the debug APK was installed over an
+existing schema-v1 install and exercised on a physical iQOO Z3 (Android 13) through onboarding, profile
+editing, the exercise library, the whole training flow (start, set logging, rest, pause, skips, finish,
+summary, effort, history) and a force-stop/relaunch mid-session, plus a v1 → v2 database upgrade that kept
+the profile. Full detail, including limitations, is in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Documentation
 
@@ -45,6 +51,7 @@ Back behaviour and SQLite read-back. Full detail, including limitations, is in
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layering, module boundaries, state, persistence, platform abstractions |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Data model, units, deletion and migration policy |
 | [EXERCISE_LIBRARY.md](EXERCISE_LIBRARY.md) | The bundled exercise catalogue, filters, alternatives ranking and how to add a movement |
+| [WORKOUT_ENGINE.md](WORKOUT_ENGINE.md) | Schedule, modes, templates, runner, rest timer, history and progression rules |
 | [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) | Milestones, release gates and definition of done |
 | [CHANGELOG.md](CHANGELOG.md) | What actually changed, per version |
 
@@ -75,7 +82,7 @@ lib/
     profile/            # domain models, repository, mappers, providers, edit screen
     dashboard/          # home screen
     exercises/          # bundled catalogue, query engine, library + detail screens
-    workouts/           # Workout tab: library entry + honest not-built-yet notice
+    workouts/           # schedule, templates, planner, runner, history, progression + UI
     nutrition/ progress/ coach/   # honest not-built-yet states
   shared/widgets/       # card, chips, number field, detail rows, milestone notice
 test/
@@ -100,6 +107,8 @@ flutter analyze
 flutter test
 flutter build apk --debug                                   # development APK
 ```
+
+Drift code generation is only needed after changing `app_tables.dart`; the generated file is committed.
 
 Release signing keys are never committed; `android/key.properties`, keystores and `*.apk` are ignored.
 

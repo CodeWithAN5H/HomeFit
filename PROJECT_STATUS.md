@@ -29,7 +29,7 @@ deleted (per instruction) and are not used by the project.
 | M2 | Database foundation | **Verified** — Drift schema v1 (profile + assessment), repository, mappers, FK enforcement, UTC timestamps; installed and exercised on a physical device |
 | M2.2 | Profile editing and management | **Verified** — prepopulated editor, cancel, validated save into the single existing row, cleared validation feedback; 47 tests pass and the flow was exercised on the iQOO Z3 |
 | M3 | Exercise library | **Verified** — 44 bundled movements with search, muscle/equipment/difficulty filters, "my equipment only", detail screens and profile-ranked alternatives; 103 tests pass, analyzer clean, exercised on the iQOO Z3 |
-| M4 | Workout engine | Not started |
+| M4 | Workout engine | **Verified** — schedule-aware dashboard, five modes, seven templates, guided runner with a persisted rest timer, history, effort capture and rule-based progression; 206 tests pass, analyzer clean, exercised on the iQOO Z3 including the v1 → v2 upgrade over the existing database |
 | M5 | Nutrition engine | Not started |
 | M6 | Notifications and consistency | Not started |
 | M7 | Progress tracking + Body Goal Timeline | Not started |
@@ -180,6 +180,111 @@ Exercise tags overflowed their card on narrow cells: `ExerciseTag` put its label
 bound, so the text was measured unconstrained (caught by the library widget test at 800 px). The label now
 sits in a `Flexible` with a single ellipsised line; the tag rows were re-checked on the device.
 
+## M4 — workout engine (2026-11-05)
+
+### What it does
+
+- The **Workout** tab is now a dashboard: a resume card when a session is unfinished, today's recommendation
+  with its reason and estimated length, every mode, targeted muscle chips, the last three sessions and the
+  exercise-library entry.
+- **Preview** (`/workout/preview`) explains the mode, the estimated time, sets, difficulty, focus, safety
+  notes and every exercise with its target. Rep targets can be nudged here; nothing is saved until *Start
+  workout*.
+- **Runner** (`/workout/session`): one exercise at a time, editable actual reps (or hold seconds), complete
+  set, skip set, skip exercise, pause/resume, a rest countdown with *Skip rest*, and an *End* dialog that
+  says whether the session will count.
+- **Summary** (`/workout/summary/:id`) reports status, sets, reps, duration, a per-exercise breakdown and a
+  1–5 effort choice that feeds progression. **History** (`/workout/history`) lists every attempt, including
+  abandoned and interrupted ones, and opens the same report.
+
+### Schedule
+
+`WorkoutSchedule` keeps strength days apart by **two calendar days** (at least one full rest day), rotates
+full-body A → B → C from the last completed strength session, switches to recovery after training today or
+yesterday, and uses the quick session when the saved session length is under 25 minutes. Poor sleep never
+silently cancels a due session; it is named in the reason and recovery is offered as a choice. The calendar
+alone never advances progression.
+
+### Modes
+
+| Mode | Purpose | Rest | Counts as strength | Drives progression |
+| --- | --- | --- | --- | --- |
+| Full session | The scheduled full-body session | 60 s | yes | yes |
+| Quick session | ~10 minute circuit for a busy day | 20 s | yes | no |
+| Recovery | Light movement, no demanding strength work | 30 s | no | no |
+| Targeted | Extra work for one muscle group | 45 s | yes | yes |
+| Skill practice | Push-up / pull-up practice | 45 s | no | no |
+
+Every mode carries a short explanation shown before starting, so none of them is a surprise.
+
+### Templates and planning
+
+Seven const-Dart templates: `full-body-a/b/c` (~30 min), `quick-full-body` (~12 min), `recovery-reset`,
+`skill-push-progress` and `skill-pull-prep`. Each slot holds preferred exercise-id chains, so one template
+serves a bodyweight-only beginner and an equipped intermediate; the planner drops what the profile cannot
+perform (with an explicit empty state when nothing is left), respects the experience ceiling and the session
+length, and applies any manual rep override.
+
+### Runner and rest
+
+Every action writes to SQLite before the state changes: the session row, the planned exercises, then each
+logged or skipped set. Rest is a stored absolute `restEndsAt` instant (plus `restRemainingSeconds` while
+paused), so backgrounding, locking the phone or killing the process cannot make the countdown drift; on
+reopen the runner restores the exercise, set and remaining rest. When every set is logged the session
+completes automatically instead of losing the last set.
+
+### Statuses, history and progression
+
+`inProgress` (resumable), `completed` (at least one logged set), `abandoned` (discarded or no sets) and
+`interrupted` (an older open session closed when a new one started). Only `completed` counts as a workout,
+and only `completed` normal/targeted sessions are evidence for progression. `ProgressionEngine` adds one rep
+after two consecutive comfortable sessions, holds after a hard effort or missing effort, reduces by one rep
+(floor 1) after ≤50 % completion or effort 5, and offers recovery after a severe sleep shortage. History is
+derived from stored sessions and sets — no extra table and no cached target that could disagree with the log.
+
+### Tests (103 new, 206 total)
+
+| File | Covers |
+| --- | --- |
+| `test/features/workouts/workout_template_test.dart` | Template integrity, mode coverage, rotation, no advanced movements for beginners, durations, safety notes |
+| `test/features/workouts/workout_schedule_test.dart` | First session, non-consecutive days, rotation, recovery after training, short sessions, poor sleep, calendar alone |
+| `test/features/workouts/workout_planner_test.dart` | Equipment chains, experience ceiling, time budget, focus, empty plans, manual overrides |
+| `test/features/workouts/progression_test.dart` | Increase after two comfortable sessions, holds, reductions, effort 5, sleep, excluded modes, bounds |
+| `test/features/workouts/workout_repository_test.dart` | Round trip, set logs, statuses, open session, interruption, cascade delete, FK rejection, history, **v1 → v2 migration** |
+| `test/features/workouts/workout_runner_test.dart` | Start, complete/skip set, rest, pause/resume, skip exercise, finish/discard, restore, auto-finish, effort |
+| `test/widget/workout_dashboard_test.dart` | Today card, recovery day, recent sessions, resume, start → preview, history link |
+| `test/widget/workout_preview_test.dart` | Mode explanation, targets, adjustment, start → runner, empty targeted plan, recovery |
+| `test/widget/workout_session_test.dart` | Current exercise, set logging, rest countdown, pause, skips, finish/discard, edited reps, no-session state |
+| `test/widget/workout_summary_history_test.dart` | Summary content, effort update, abandoned messaging, not found, empty history, list and detail |
+
+### Device verification (iQOO Z3, Android 13)
+
+| Check | Result |
+| --- | --- |
+| Upgrade in place | Debug APK installed over the existing schema-v1 database: profile (30 years, 180 cm, 58.0 kg, beginner, 45 min evening, goals and focus) intact, no error screen, M4 tables created on first open |
+| Dashboard | Workout tab shows today's card (*Full body A*, ≈30 min), all modes, targeted chips; after finishing it immediately switched to *Recovery day — you trained today* |
+| Preview | Mode explanation, 17 sets, safety notes, five exercises with targets, working −/+ rep adjustment, *Start workout* |
+| Runner | 0 of 17 sets, squat set 1 of 3, target 8 reps, numbered steps and cues |
+| Logging and rest | *Complete set* → 1 of 17, rest counted down from 0:54, set 2 of 3, *Skip rest* cleared it |
+| Pause / resume | Pause froze the rest and showed the paused banner; Resume restored the screen |
+| Skips | Skip set recorded a skipped set; skip exercise advanced to Push-up |
+| End and summary | Dialog explained the saved work; *Finish* produced *Session complete*, 1 of 17 sets, 8 reps, honest *not started* rows |
+| Effort | Choosing 4 stored *Saved: effort 4 of 5.* and the history detail shows it |
+| History | *1 completed · 1 total*, tile with sets/reps/duration; detail with status, effort and per-exercise report |
+| Killed mid-session | Force-stop after one quick-session set: relaunch showed *Session in progress · 1 of 10 sets logged*; Resume restored *Jumping jack, set 2 of 2* with the set count intact |
+| Logs | No Flutter exceptions, overflow warnings or crash-buffer entries during the pass |
+
+### Defects found by the M4 tests and fixed
+
+1. **Paused rest lost its remaining time**: `copyWith(clearRest: true)` also nulled the value being written, so
+   a pause stored nothing to resume from. Rest clearing and remaining-time clearing are now separate flags.
+2. **Set logs were silently dropped when a session object carried them** (restore/import path): `createSession`
+   wrote sessions and exercises only. Sets are now inserted in the same transaction.
+3. **Discarding led to the summary of the abandoned session**: the ended session triggered the summary redirect
+   while the discard also navigated home. The redirect is now suppressed for an explicit discard.
+4. **The reps field was rebuilt with a fresh controller on every build**, which leaked controllers and could
+   jump the cursor. The runner now owns and disposes one controller and reseeds it per set.
+
 ## What M1 actually delivers
 
 - **Design system** (`lib/core/theme`): dark charcoal/navy palette, one blue and one violet accent, 20 dp
@@ -224,8 +329,12 @@ sits in a `Flexible` with a single ellipsised line; the tag rows were re-checked
 | `flutter test` after M2.2 | **47 tests passed** (editor, router navigation, fresh-file database, draft validation) |
 | `adb install -r` + manual pass on iQOO Z3 (M2.2) | Prepopulation, invalid input, cancel, save, restart, Back and database state all checked |
 | `flutter test` after M3 | **103 tests passed** (catalogue integrity, query engine, alternatives, library and detail widgets, router navigation) |
+| `dart run build_runner build` after schema v2 | Drift codegen succeeded; generated file committed |
 | `flutter analyze` after M3 | **No issues found** |
 | `adb install -r` + manual pass on iQOO Z3 (M3) | Library entry, list, search, muscle filter, "my equipment only", empty state + clear, detail, alternatives, Back |
+| `flutter test` after M4 | **206 tests passed** (templates, schedule, planner, progression, repository and migration, runner, and dashboard/preview/runner/summary/history widgets) |
+| `flutter analyze` after M4 | **No issues found** |
+| `adb install -r` + manual pass on iQOO Z3 (M4) | Upgrade over the v1 database, dashboard, preview, start, set logging, rest countdown, pause/resume, skips, end/finish summary, effort, history detail, resume after force-stop |
 
 ## Known limitations (honest list)
 
@@ -236,11 +345,12 @@ sits in a `Flexible` with a single ellipsised line; the tag rows were re-checked
 3. **No profile reset or delete.** There is no way to clear the local profile from inside the app yet.
 4. **Unsaved edits are discarded on Back/Cancel without a confirmation prompt.** Deliberate for now, but it
    can lose typing.
-5. **No training, nutrition, progress or coaching features.** Those tabs state this explicitly.
+5. **No nutrition, progress or coaching features.** Training (M4) exists; the other three tabs state that
+   they are not built yet.
 6. **No notifications.** The reminder *preference* is stored; nothing is scheduled, and no permission flow
    exists yet.
-7. **No migration test yet.** Schema v1 is the first version, so there is nothing to migrate from; the
-   migration harness arrives with schema v1→v2.
+7. **Migrations are only tested for v1 → v2.** The harness covers the only upgrade that exists; every later
+   schema version must add its own migration case.
 8. **Device coverage is a single phone.** Validation ran on one iQOO Z3 (Android 13, 440 dpi). Other
    densities, Android 14/15 behaviour and tablets are untested.
 9. **Only the debug APK was exercised.** Release shrinking, AAB packaging and release signing remain
@@ -252,5 +362,13 @@ sits in a `Flexible` with a single ellipsised line; the tag rows were re-checked
     the detail screen says so; licensing a photo set was not part of M3.
 13. **Library ordering is alphabetical only.** Profile-aware ranking is limited to alternatives; there is no
     "recommended for you" sort in the list itself.
-14. **Exercises live in Dart, not in the database.** Ids are stable slugs, so M4 can store references to them,
-    but moving the catalogue into seeded tables is deferred until user data actually needs it.
+14. **Exercises live in Dart, not in the database.** Workout rows store the stable slugs (deliberately no
+    foreign key), but moving the catalogue into seeded tables is deferred until a query needs SQL over it.
+15. **No background rest alert.** Rest is stored as an absolute end time, so the countdown is correct when you
+    return to the app; nothing notifies you if the screen is locked or the process is closed, and the timer
+    only refreshes while the runner is on screen.
+16. **No load tracking.** Sets record reps or hold seconds only; weight and band resistance are not stored.
+17. **Training history is read-only.** A completed session cannot be edited or deleted, and there is no way to
+    correct a mistyped set after finishing.
+18. **One fixed rotation.** Three full-body templates and no user-built split; Plan Studio (M8) owns custom
+    plans.

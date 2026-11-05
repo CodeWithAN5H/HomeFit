@@ -9,9 +9,11 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/utilities/day_phrase.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/detail_row.dart';
-import '../../../shared/widgets/milestone_notice.dart';
 import '../../profile/application/profile_providers.dart';
 import '../../profile/domain/user_profile.dart';
+import '../../workouts/application/workout_providers.dart';
+import '../../workouts/domain/workout_schedule.dart';
+import '../../workouts/domain/workout_session.dart';
 
 /// Today at a glance.
 ///
@@ -25,6 +27,13 @@ class HomeScreen extends ConsumerWidget {
     final UserProfile? profile = ref.watch(profileControllerProvider);
     final DateTime now = ref.watch(clockProvider).now();
     final ThemeData theme = Theme.of(context);
+    final TodayRecommendation today = ref.watch(todayRecommendationProvider);
+    final WorkoutSession? openSession = ref.watch(openSessionProvider).value;
+    final List<WorkoutSession> sessions =
+        ref.watch(workoutSessionsProvider).value ?? const <WorkoutSession>[];
+    final int completed = sessions
+        .where((WorkoutSession session) => session.status.countsAsWorkout)
+        .length;
 
     if (profile == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -70,19 +79,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           _RecoveryCard(profile: profile),
           const SizedBox(height: AppSpacing.md),
-          const MilestoneNotice(
-            icon: Icons.fitness_center,
-            title: 'Workout engine — next milestone',
-            body:
-                'Your adaptive plan, the guided session runner and the rest '
-                'timer are not part of this build, so nothing on Home starts a '
-                'workout yet.',
-            planned: [
-              'Conservative 2–3 day beginner plan from your profile',
-              'Guided sets, recorded reps and a rest timer',
-              'Progression driven by what you actually completed',
-            ],
-          ),
+          _TodayCard(recommendation: today, openSession: openSession),
           const SizedBox(height: AppSpacing.md),
           AppCard(
             child: Column(
@@ -91,13 +88,91 @@ class HomeScreen extends ConsumerWidget {
                 Text('Consistency', style: theme.textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'No sessions logged yet — session history arrives with the '
-                  'workout engine.',
+                  sessions.isEmpty
+                      ? 'No sessions logged yet. One full-body session is '
+                            'enough to start; three non-consecutive days is the '
+                            'plan.'
+                      : '$completed completed '
+                            '${completed == 1 ? 'session' : 'sessions'} · '
+                            '${sessions.first.mode.label} most recently.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.textMuted,
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Today's activity, with the same recommendation the Workout tab uses.
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({required this.recommendation, this.openSession});
+
+  final TodayRecommendation recommendation;
+  final WorkoutSession? openSession;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool resume = openSession != null;
+    final bool train = recommendation.recommendsStrength;
+    return AppCard(
+      key: const Key('home_today_card'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                train ? Icons.fitness_center : Icons.self_improvement,
+                color: train ? AppColors.primary : AppColors.success,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  resume ? 'Session in progress' : recommendation.kind.label,
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            resume ? openSession!.templateName : recommendation.headline,
+            style: theme.textTheme.titleLarge,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            resume
+                ? '${openSession!.loggedSets} of ${openSession!.totalSets} '
+                      'sets logged. Pick up where you left off.'
+                : recommendation.reason,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FilledButton(
+            key: const Key('home_start_workout'),
+            onPressed: () => context.push(
+              resume
+                  ? AppRoutes.workoutSession
+                  : AppRoutes.workoutPreview(
+                      mode: recommendation.mode.name,
+                      templateId: recommendation.templateId,
+                    ),
+            ),
+            child: Text(
+              resume
+                  ? 'Resume session'
+                  : train
+                  ? 'Start workout'
+                  : 'Open recovery',
             ),
           ),
         ],
