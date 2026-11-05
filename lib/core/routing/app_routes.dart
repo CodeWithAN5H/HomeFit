@@ -6,6 +6,11 @@ abstract final class AppRoutes {
   static const String onboarding = '/onboarding';
   static const String home = '/home';
   static const String workout = '/workout';
+  static const String workoutExercises = '$workout/exercises';
+
+  /// Detail screen for one bundled exercise.
+  static String exerciseDetail(String exerciseId) =>
+      '$workoutExercises/$exerciseId';
   static const String nutrition = '/nutrition';
   static const String progress = '/progress';
   static const String coach = '/coach';

@@ -1,6 +1,6 @@
 # HomeFit — Project Status
 
-Last updated: 2026-11-04 · Version `0.1.0+1` (development)
+Last updated: 2026-11-05 · Version `0.1.0+1` (development)
 
 Status vocabulary: **Not started** · **In progress** · **Implemented** (code exists) · **Tested**
 (automated checks pass) · **Verified** (checked on a device or by an end-to-end run).
@@ -28,7 +28,7 @@ deleted (per instruction) and are not used by the project.
 | M1 | Design system, navigation, onboarding, profile | **Tested** — theme, shell, 5-step onboarding with validation, profile persistence; 29 tests pass, analyzer clean |
 | M2 | Database foundation | **Verified** — Drift schema v1 (profile + assessment), repository, mappers, FK enforcement, UTC timestamps; installed and exercised on a physical device |
 | M2.2 | Profile editing and management | **Verified** — prepopulated editor, cancel, validated save into the single existing row, cleared validation feedback; 47 tests pass and the flow was exercised on the iQOO Z3 |
-| M3 | Exercise library | Not started |
+| M3 | Exercise library | **Verified** — 44 bundled movements with search, muscle/equipment/difficulty filters, "my equipment only", detail screens and profile-ranked alternatives; 103 tests pass, analyzer clean, exercised on the iQOO Z3 |
 | M4 | Workout engine | Not started |
 | M5 | Nutrition engine | Not started |
 | M6 | Notifications and consistency | Not started |
@@ -111,6 +111,75 @@ Saving wrote the data and showed the snackbar but **left the editor on screen**.
 `appRouterProvider` now refreshes only when profile *presence* changes (onboarding ↔ app). A router-level test
 (`test/app/profile_edit_navigation_test.dart`) reproduces the old behaviour and fails without the fix.
 
+## M3 — offline exercise library (2026-11-05)
+
+### What it does
+
+- The **Workout** tab now leads with an *Exercise library* card (44 movements with steps, form cues and
+alternatives) and keeps an explicit notice that guided training arrives in M4.
+- **Library** (`/workout/exercises`): search by name, muscle chips (All + seven groups), an equipment menu,
+  a difficulty menu, a **My equipment only** toggle, a live *N of 44 exercises* count and a *Clear filters*
+  action. The list is alphabetical and one-handed; ≥700 dp widths use a two-column grid.
+- **Detail** (`/workout/exercises/:exerciseId`): icon panel, name, muscle/difficulty/equipment tags, an
+equipment-compatibility card, an overview (primary, secondary, equipment, difficulty, the user's own
+  experience level), numbered steps, form/safety cues, and up to four alternatives — each marked
+  *Needs …* when the profile lacks the equipment.
+- **Empty state** when nothing matches (with its own clear action), and a not-found state for an unknown id
+  instead of a crash.
+
+### Dataset
+
+44 exercises as **const Dart data** in `lib/features/exercises/data/catalog/` — chest 6, back 6, shoulders 6,
+arms 6, legs 8, core 7, full body 5 — merged into one read-only list. Every entry carries a lowercase slug
+id, a primary muscle, optional secondary muscles, declared equipment, a difficulty, at least three steps and
+at least two form cues. Nothing is fetched, parsed or decoded at runtime, so the library works offline from
+the first frame and is fully unit testable.
+
+### Profile integration
+
+- **My equipment only** filters through `canPerformWith(profile.equipment)`; bodyweight movements never
+  require equipment the user does not have.
+- The detail screen states the user's experience level next to the exercise's difficulty and shows either
+  *“Ready with your equipment”* or the exact missing items.
+- **Alternatives** are ranked by the saved profile: primary-muscle match **+6** (otherwise a shared muscle is
+  **+1**), candidate works the target's muscle as a secondary **+2**, equipment already owned **+4**,
+  difficulty within the profile's level **+2**, a user focus muscle **+1**, calisthenics goal with a
+  bodyweight movement **+1**. Candidates must share at least one muscle with the target; ties break by easier
+  difficulty and then name. The library list itself stays alphabetical — profile ordering is only used where
+  it answers a question (“what can I do instead?”).
+
+### Tests (56 new, 103 total)
+
+| File | Covers |
+| --- | --- |
+| `test/features/exercises/exercise_catalog_test.dart` | Dataset integrity (unique slug ids, ≥3 steps, ≥2 cues, honest equipment, no duplicate muscles, ≥4 per group, ≥40 total), repository lookup by id, unknown id → null, read-only catalogue, experience→difficulty mapping, difficulty ordering |
+| `test/features/exercises/exercise_query_test.dart` | Search (case-insensitive, trimmed), muscle filter including secondary muscles, equipment/difficulty filters, combined filters, "my equipment only", alphabetical order, empty result, clear-all semantics |
+| `test/features/exercises/exercise_alternatives_test.dart` | Alternatives never include the target, always share a muscle, prefer owned equipment, respect difficulty, apply focus and goal bonuses, cap at four, ordering |
+| `test/features/exercises/exercise_library_screen_test.dart` | Library renders the full catalogue, search narrows and clears, muscle chip toggles, equipment and difficulty menus, "my equipment only", empty state + clear, count text, card → detail |
+| `test/features/exercises/exercise_detail_screen_test.dart` | Detail content (tags, overview, steps, cues), compatibility banner for ready and missing equipment, alternatives list and "Needs …" marker, unknown id |
+| `test/app/exercise_navigation_test.dart` | Workout tab → library → exercise detail through the real router, Back returns to the library |
+
+### Device verification (iQOO Z3, Android 13)
+
+| Check | Result |
+| --- | --- |
+| Entry point | Workout tab shows the library card (*44 movements…*) above the M4 notice; tapping it opens **Exercise library** |
+| List | All 44 render, alphabetical, each card showing muscle, difficulty and equipment |
+| Search | `pull` → **3 of 44** (Band face pull, Band pull-apart, Pull-up); clearing via the ✕ restores 44 |
+| Muscle filter | **Chest** → **9 of 44** (primary *and* secondary chest work), "Clear filters" appears |
+| My equipment only | With the profile's equipment → **21 of 44**; all visible results were bodyweight |
+| Empty state | `zzz` → **0 of 44**, *No exercises match*, its own **Clear filters** button restores 44 |
+| Detail | *Band chest press*: icon panel, caption, tags, *Ready with your equipment*, overview incl. *Your experience*, three steps, two cues |
+| Alternatives | Knee push-up, Push-up, Incline push-up (*Needs Sturdy chair / table*), Band biceps curl |
+| Back | Detail → library → Workout tab; no state loss, no crash (crash buffer empty) |
+| Logs | No Flutter exceptions, no overflow warnings, no crash-buffer entries |
+
+### Defect found and fixed during this milestone
+
+Exercise tags overflowed their card on narrow cells: `ExerciseTag` put its label in a `Row` with no width
+bound, so the text was measured unconstrained (caught by the library widget test at 800 px). The label now
+sits in a `Flexible` with a single ellipsised line; the tag rows were re-checked on the device.
+
 ## What M1 actually delivers
 
 - **Design system** (`lib/core/theme`): dark charcoal/navy palette, one blue and one violet accent, 20 dp
@@ -154,6 +223,9 @@ Saving wrote the data and showed the snackbar but **left the editor on screen**.
 | `flutter test` after the device fixes | **33 tests passed** |
 | `flutter test` after M2.2 | **47 tests passed** (editor, router navigation, fresh-file database, draft validation) |
 | `adb install -r` + manual pass on iQOO Z3 (M2.2) | Prepopulation, invalid input, cancel, save, restart, Back and database state all checked |
+| `flutter test` after M3 | **103 tests passed** (catalogue integrity, query engine, alternatives, library and detail widgets, router navigation) |
+| `flutter analyze` after M3 | **No issues found** |
+| `adb install -r` + manual pass on iQOO Z3 (M3) | Library entry, list, search, muscle filter, "my equipment only", empty state + clear, detail, alternatives, Back |
 
 ## Known limitations (honest list)
 
@@ -176,3 +248,9 @@ Saving wrote the data and showed the snackbar but **left the editor on screen**.
 10. **Accessibility is partial.** Touch targets and semantics are implemented for chips and fields, but a
     full screen-reader and 2.0× text-scale pass has not been done (M9).
 11. **Signing is debug-only.** Release APK signing is deliberately a placeholder until M10.
+12. **The library has no demonstration photos.** Each movement shows a generated muscle-group icon panel, and
+    the detail screen says so; licensing a photo set was not part of M3.
+13. **Library ordering is alphabetical only.** Profile-aware ranking is limited to alternatives; there is no
+    "recommended for you" sort in the list itself.
+14. **Exercises live in Dart, not in the database.** Ids are stable slugs, so M4 can store references to them,
+    but moving the catalogue into seeded tables is deferred until user data actually needs it.

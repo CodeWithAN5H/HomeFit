@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/coach/presentation/coach_screen.dart';
 import '../../features/dashboard/presentation/home_screen.dart';
+import '../../features/exercises/presentation/exercise_detail_screen.dart';
+import '../../features/exercises/presentation/exercise_library_screen.dart';
 import '../../features/nutrition/presentation/nutrition_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/profile/application/profile_providers.dart';
@@ -68,6 +70,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.workout,
                 builder: (context, state) => const WorkoutScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'exercises',
+                    builder: (context, state) => const ExerciseLibraryScreen(),
+                    routes: [
+                      GoRoute(
+                        path: ':exerciseId',
+                        builder: (context, state) => ExerciseDetailScreen(
+                          exerciseId: state.pathParameters['exerciseId'] ?? '',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

@@ -77,6 +77,33 @@ nutrition are still absent and every affected tab says so.
 - `flutter build apk --debug`: succeeded; installed on a physical iQOO Z3 (Android 13) and exercised through
   onboarding, navigation, restart and SQLite read-back.
 
+### Added in M3 — offline exercise library (2026-11-05)
+
+- Bundled catalogue of **44 exercises** as const Dart data (`lib/features/exercises/data/catalog/`): chest,
+  back, shoulders, arms, legs, core and full body, each with three or more steps and at least two form cues.
+  No assets, no JSON, no network.
+- **Exercise library** at `/workout/exercises`, reached from a new card on the Workout tab: name search,
+  muscle chips, equipment and difficulty menus, **My equipment only**, live match count, clear-filters.
+- **Exercise detail** at `/workout/exercises/:exerciseId`: visual panel, tags, equipment compatibility for the
+  saved profile, overview including the user's experience level, numbered steps, form/safety cues, and up to
+  four alternatives with *Needs …* markers when the profile lacks equipment.
+- Empty state for zero matches (with its own clear action) and a not-found state for unknown ids.
+- Pure `ExerciseQuery`/`ExerciseFilter` engine, kept free of Flutter so the rules are unit tested directly.
+- 56 new tests (catalogue integrity, filtering, alternatives ranking, both screens, router navigation); 103 in
+  total.
+
+### Fixed in M3
+
+- Exercise card tags overflowed their card: the tag label was measured without a width bound. It now sits in a
+  `Flexible` with a single ellipsised line.
+
+### Verification (M3)
+
+- `flutter analyze`: no issues.
+- `flutter test`: 103 passed.
+- Debug APK installed over the existing one; library entry, list, search, filters, empty state, detail,
+  alternatives and Back were exercised on the iQOO Z3 with no exceptions or overflow warnings.
+
 ### Known gaps
 
 Profile editing, exercise library, workout engine, nutrition engine, reminders, progress tracking, Body

@@ -14,8 +14,8 @@ HomeFit is being built for **Android first**, with Windows and Linux planned. Al
 
 ## Current status
 
-**M0 complete · M1 implemented and tested · M2 implemented and verified · M2.2 profile editing done.**
-Workout, nutrition, progress, coaching and notifications are **not implemented yet**.
+**M0 complete · M1 implemented and tested · M2 verified · M2.2 profile editing done · M3 offline exercise
+library done.** Guided training, nutrition, progress, coaching and notifications are **not implemented yet**.
 
 What actually works in this build:
 
@@ -24,14 +24,18 @@ What actually works in this build:
 - The profile and optional baseline assessment are saved to a local SQLite database and survive restarts.
 - **Profile editing**: every answer can be changed later from Home → *Edit* (or the app-bar pencil), with the
   same validation as onboarding, cancel-without-saving, and an in-place update of the single stored row.
+- **Offline exercise library** (M3): 44 movements with muscle group, difficulty, equipment, steps and form
+  cues — search, muscle/equipment/difficulty filters, *my equipment only*, detail screens and alternatives
+  ranked for the saved profile. Bundled in the app: no network, no assets, no photos.
 - A dark Material 3 design system, five-destination navigation (Home, Workout, Nutrition, Progress, Coach),
   and a home screen that summarises the saved profile and gives sleep-aware recovery guidance.
 - An honest "not built yet" state on every tab whose features are still missing — no dead controls.
 
-Verified: `flutter analyze` → no issues; `flutter test` → 47 tests pass; the debug APK was installed and
+Verified: `flutter analyze` → no issues; `flutter test` → 103 tests pass; the debug APK was installed and
 exercised on a physical iQOO Z3 (Android 13) through onboarding, profile editing (save, cancel, invalid
-input, restart), all five tabs, Back behaviour and SQLite read-back. Full detail, including limitations, is
-in [PROJECT_STATUS.md](PROJECT_STATUS.md).
+input, restart), the exercise library (search, filters, empty state, detail, alternatives), all five tabs,
+Back behaviour and SQLite read-back. Full detail, including limitations, is in
+[PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Documentation
 
@@ -40,6 +44,7 @@ in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | Environment, milestone status, verification log, limitations |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layering, module boundaries, state, persistence, platform abstractions |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Data model, units, deletion and migration policy |
+| [EXERCISE_LIBRARY.md](EXERCISE_LIBRARY.md) | The bundled exercise catalogue, filters, alternatives ranking and how to add a movement |
 | [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) | Milestones, release gates and definition of done |
 | [CHANGELOG.md](CHANGELOG.md) | What actually changed, per version |
 
@@ -50,6 +55,7 @@ in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 - **Riverpod** — state management and dependency injection
 - **go_router** — navigation with a five-destination shell and an onboarding redirect
 - **Drift / SQLite** — local structured storage with a versioned schema and migrations
+- **Const Dart datasets** — the exercise catalogue ships in code, so the library is instant and fully offline
 
 Package versions are pinned in `pubspec.lock` and were resolved against the installed SDK, not guessed.
 
@@ -68,7 +74,9 @@ lib/
     onboarding/         # draft validation (pure) + five-step UI
     profile/            # domain models, repository, mappers, providers, edit screen
     dashboard/          # home screen
-    workouts/ nutrition/ progress/ coach/   # honest not-built-yet states
+    exercises/          # bundled catalogue, query engine, library + detail screens
+    workouts/           # Workout tab: library entry + honest not-built-yet notice
+    nutrition/ progress/ coach/   # honest not-built-yet states
   shared/widgets/       # card, chips, number field, detail rows, milestone notice
 test/
   app/  core/  features/  widget/  fixtures/   # routing, unit, database, controller and widget tests

@@ -1,8 +1,8 @@
 # HomeFit — Architecture
 
-Status: **core implemented in M1–M2.** The layering, feature module layout, theme, routing, dependency
-injection and Drift profile store exist as described. The training, nutrition, consistency and progress
-engines are still design and will be added behind the same boundaries.
+Status: **core implemented in M1–M3.** The layering, feature module layout, theme, routing, dependency
+injection, Drift profile store and the offline exercise library exist as described. The training, nutrition,
+consistency and progress engines are still design and will be added behind the same boundaries.
 
 ---
 
@@ -67,8 +67,8 @@ test/
   widget/                    # focused widget tests
   fixtures/                  # plan JSON, food datasets for import validation tests
 assets/
-  exercises/                 # original, lightweight SVG/PNG demonstration illustrations
-  data/                      # exercises.json, foods.json, recipes.json (bundled seeds)
+  exercises/                 # reserved for original illustration work; the M3 visuals are generated in code
+  data/                      # later bundled seeds (foods.json, recipes.json); exercises live in const Dart
 ```
 
 `core/services` holds **interfaces** in plain Dart and platform implementations in separate files, so a
@@ -108,6 +108,15 @@ content that survives app updates.
 
 Important state is never memory-only: an in-progress session writes its set records as they are completed,
 so a process kill loses at most the current set.
+
+### Reference content: code first, tables later
+
+The M3 exercise catalogue deliberately ships as **const Dart data** (`lib/features/exercises/data/catalog/`,
+merged into one read-only list) instead of seeded tables or bundled JSON. It is complete at compile time, so
+there is no loader, no async state and nothing to fail offline, and the dataset can be asserted in plain unit
+tests. Exercise ids are already stable lowercase slugs, so M4 workout history can store references that
+survive app updates; the catalogue moves into seeded tables only when a query actually needs SQL (for example
+searching exercises together with logged sets). Schema v1 is therefore unchanged by M3.
 
 ## Platform-specific functionality
 
